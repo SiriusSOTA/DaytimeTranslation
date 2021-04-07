@@ -14,4 +14,6 @@ config = {
     "n_epochs": 100,
     "batch_size": 4,
     "save_period": 1,
+    "log_frequency": 100,
+    "picture_frequency": 800,
 }

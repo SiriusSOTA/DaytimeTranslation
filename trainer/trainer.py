@@ -31,7 +31,6 @@ class Trainer():
                         checkpoint_path: Path,
                         ) -> None:
         checkpoint = {
-            "model": self.model,
             "model_state_dict": self.model.state_dict(),
             "epoch": epoch,
         }
@@ -40,7 +39,6 @@ class Trainer():
             label = opt["label"]
             optimizer = opt["value"]
 
-            checkpoint[f"optimizer_{label}"] = optimizer
             checkpoint[f"optimizer_{label}_state_dict"] = optimizer.state_dict()
 
         torch.save(checkpoint, checkpoint_path)
@@ -60,7 +58,7 @@ class Trainer():
     def train_epoch(self, pbar: tqdm) -> None:
         self.model.train()
         
-        for batch in self.train_loader:
+        for index, batch in enumerate(self.train_loader):
             for opts in self.optimizers:
 
                 step = opts["label"]
@@ -73,8 +71,9 @@ class Trainer():
                 utils.clip_grad_norm_(parameters=self.model.parameters(),
                                       max_norm=10)
                 
-                self._update_history(info)
-                self._update_logs(pbar)
+                if index % self.config["log_frequency"] == 0:
+                    self._update_history(info)
+                    self._update_logs(pbar)
                 
                 optimizer.step()
                 optimizer.zero_grad()
@@ -98,6 +97,17 @@ class Trainer():
                 if isinstance(value, torch.Tensor):
                     value = value.item()
                 self.history[key][inner_key].append(value)
+                
+    def _show_picture(self):
+        with torch.no_grad():
+            batch = next(iter(self.train_loader))
+            sample = self.model.sample(batch)
+
+        images = (utils.make_grid(sample, nrow=4).detach().cpu().permute(1,2,0)
+                  * Tensor([0.406, 0.456, 0.485])
+                  + Tensor([0.225, 0.224, 0.229])).numpy()
+        wandb.log({"generated images": [wandb.Image(images)]})
+
 
     def fit(self):
         n_epochs = self.config["n_epochs"]
@@ -107,20 +117,13 @@ class Trainer():
 
         for epoch in range(n_epochs):
             self.train_epoch(pbar)
-            
+
             if epoch % self.config["save_period"] == 0:
                 loss = self.history["generator"]["loss"]
                 checkpoint_path = \
                     Path.cwd() / "checkpoints" / f"gen_loss={loss},e={epoch}.pt"
                 self.save_checkpoint(checkpoint_path, epoch)
 
-                with torch.no_grad():
-                    batch = next(iter(train_dataloader))
-                    sample = self.model.sample(batch)
-                images = (utils.make_grid(sample, nrow=4).detach().cpu().permute(1,2,0)
-                          * Tensor([0.406, 0.456, 0.485])
-                          + Tensor([0.225, 0.224, 0.229])).numpy()
-                wandb.log({"generated images": [wandb.Image(images)]})
             pbar.update(1)
 
         pbar.close()
