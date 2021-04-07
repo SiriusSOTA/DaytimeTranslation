@@ -6,27 +6,23 @@ import torch
 import torch.nn as nn
 import torch.nn.utils as utils
 from torch.utils.data import DataLoader
-from torch import optim
 from tqdm import tqdm
 import wandb
-
-from model_base import ModelBase
 
 
 class Trainer():
     def __init__(self, 
                  model: nn.Module,
                  config: dict,
-                 optimizers: list, # [(label, opt)]
                  train_loader: DataLoader,
                  val_loader: DataLoader=None,
                  scheduler=None):
         self.model = model
         self.config = config
-        self.optimizers = self.model.configure_optimizers()
+        self.optimizers = self.model.configure_optimizers()[0]
         self.train_loader = train_loader
         self.val_loader = val_loader
-        self.scheduler = scheduler
+        self.schedulers = scheduler
         self.history = {"train": defaultdict(list), 
                         "val": defaultdict(list)}
 
@@ -40,7 +36,7 @@ class Trainer():
             "epoch": epoch,
         }
 
-        for opt in optimizers:
+        for opt in self.optimizers:
             label = opt["label"]
             optimizer = opt["value"]
 
@@ -55,28 +51,26 @@ class Trainer():
         checkpoint = torch.load(checkpoint_path)
         self.model.load_state_dict(checkpoint["model_state_dict"])
 
-        for opt in optimizers:
+        for opt in self.optimizers:
             label = opt["label"]
             optimizer = opt["value"]
             optimizer.load_state_dict(checkpoint[f"optimizer_{label}_state_dict"])
 
     @torch.enable_grad()
-    def train_epoch(self,
-                    pbar: tqdm
-                    ) -> None:
-        model.train()
+    def train_epoch(self, pbar: tqdm) -> None:
+        self.model.train()
         
-        for batch_idx, batch in enumerate(tqdm.tqdm(self.train_loader)):
-            for opts in optimizers:
+        for batch in self.train_loader:
+            for opts in self.optimizers:
 
                 step = opts["label"]
                 optimizer = opts["value"]
 
                 info = self.model.training_step(batch=batch, 
                                                 step=step)
-                loss = info['loss']
+                loss = info["train"]['loss']
                 loss.backward()
-                utils.clip_grad_norm_(parameters=model.parameters(),
+                utils.clip_grad_norm_(parameters=self.model.parameters(),
                                       max_norm=10)
                 
                 self._update_history(info)
@@ -86,8 +80,6 @@ class Trainer():
                 optimizer.zero_grad()
         
     def _update_logs(self, pbar: tqdm):
-        pbar.update(1)
-
         history_train = self.history["train"]
         postfix_train = {
             key + "_train": history_train[key][-1] for key in history_train
@@ -108,20 +100,20 @@ class Trainer():
                 continue
             for inner_key in info[key]:
                 value = info[key][inner_key]
-                if isinstance(inner, torch.Tensor):
+                if isinstance(value, torch.Tensor):
                     value = value.item()
-                self.history[key][inner].append(value)
+                self.history[key][inner_key].append(value)
 
     def fit(self):
         n_epochs = self.config["n_epochs"]
-        pbar = tqdm(total=epochs, position=0, leave=True)
+        pbar = tqdm(total=n_epochs, position=0, leave=True)
         wandb.init(project="test-drive", config=self.config)
         wandb.watch(self.model)
 
         for epoch in range(n_epochs):
-            self._train_epoch(pbar)
+            self.train_epoch(pbar)
             
-            if epoch % self.save_period == 0:
+            if epoch % self.config["save_period"] == 0:
                 loss = self.history["train"]["loss"]
                 checkpoint_path = \
                     Path.cwd() / "checkpoints" / f"loss={loss},e={epoch}.pt"
@@ -129,11 +121,12 @@ class Trainer():
 
                 with torch.no_grad():
                     batch = next(iter(train_dataloader))
-                    sample = model.sample(batch)
+                    sample = self.model.sample(batch)
                 images = (utils.make_grid(sample, nrow=4).detach().cpu().permute(1,2,0)
                           * Tensor([0.406, 0.456, 0.485])
                           + Tensor([0.225, 0.224, 0.229])).numpy()
                 wandb.log({"generated images": [wandb.Image(images)]})
+            pbar.update(1)
 
         pbar.close()
         wandb.finish()

@@ -9,6 +9,9 @@ Lambdas order:
 """
 
 config = {
-    "learning rate": 3e-4,
-    "lambdas": [5, 2, 1, 0.1, 4, 1] 
+    "learning_rate": 3e-4,
+    "lambdas": [5, 2, 1, 0.1, 4, 1],
+    "n_epochs": 100,
+    "batch_size": 4,
+    "save_period": 1,
 }

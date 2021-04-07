@@ -1,9 +1,9 @@
 #!L
 import torch
 import torch.nn as nn
-from torch.optim import optimizer
+import torch.optim as optim
 
-from hidt_components import (
+from src.hidt_components import (
     ConditionalDiscriminator,
     ContentEncoder,
     Decoder,
@@ -132,14 +132,14 @@ class HiDTModel(nn.Module):
         for i, _ in enumerate(loss_terms):
             loss += self.lambdas[i] * loss_terms[i]
 
-        info = {'loss': loss,
+        train_info = {'loss': loss,
                 'adversarial loss': loss_adv + loss_adv_r,
                 'image reconstruction loss': loss_rec + loss_rec_r + loss_cyc,
                 'content reconstruction loss': loss_c + loss_c_r,
                 'style reconstruction loss': loss_s,
                 'random style reconstruction loss': loss_s_r,
                 'style distribution loss': loss_dist}
-        return info
+        return {"train": train_info}
 
     def discriminator_step(self,
                            x: torch.Tensor,
@@ -207,12 +207,12 @@ class HiDTModel(nn.Module):
 
         loss = loss_adv_hat + loss_adv_r + loss_adv_real
 
-        info = {'loss': loss,
+        train_info = {'loss': loss,
                 'loss_adv_hat': loss_adv_hat,
                 'loss_adv_r': loss_adv_r,
                 'loss_adv_real': loss_adv_real}
 
-        return info
+        return {"train": train_info}
 
     def training_step(self,
                       batch,
@@ -258,13 +258,15 @@ class HiDTModel(nn.Module):
         params_g = list(self.generator.parameters()) + \
                    list(self.content_encoder.parameters()) + \
                    list(self.style_encoder.parameters())
-        optimizer_g = optimizer.Adam(
+
+        optimizer_g = optim.Adam(
             params=params_g,
             lr=self.config["learning_rate"],
         )
         params_d = list(self.cond_discriminator.parameters()) + \
                    list(self.uncond_discriminator.parameters())
-        optimizer_d = optimizer.Adam(
+
+        optimizer_d = optim.Adam(
             params=params_d,
             lr=self.config["learning_rate"],
         )
