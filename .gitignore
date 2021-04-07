@@ -1,7 +1,9 @@
 .ipynb_checkpoints/
 checkpoints/
 wandb/
-data/
+data/images/
+data/images_en/
+data/serps*
 __pycache__/
 *.py[code]
 src/core
