@@ -50,9 +50,6 @@ def download_photos(fname, folder, ban_list):
         
         urls.append((folder + d[1], d[2]))
 
-    
-    print(len(urls))
-    print(urls[:10])
     pool.map(func, urls)
     
     
