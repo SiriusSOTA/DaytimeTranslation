@@ -25,11 +25,12 @@ def func(inp):
         r = requests.get(url, allow_redirects=True, timeout=5)
         if len(r.content) < 1024:
             return
-        with open(fname, 'wb') as f:
-            f.write(r.content)
     except:
-        pass #print(url + ' failed')
-    
+        print(url + ' failed')
+        return
+    with open(fname, 'wb') as f:
+        f.write(r.content)
+
 
 def download_photos(fname, folder, ban_list):
     pool = multiprocessing.Pool(8)
@@ -47,7 +48,7 @@ def download_photos(fname, folder, ban_list):
         if not os.path.isdir(subfolder):
             os.mkdir(subfolder) 
         
-        urls.append((d[1], d[2]))
+        urls.append((folder + d[1], d[2]))
 
     
     print(len(urls))
@@ -60,13 +61,13 @@ ban_list = [
         '051394c7-5884-4d38-a18e-9a822954052d',
         '7c58ac38-7d1c-4f19-b112-b5b43f50a6ef',
         '1a7a7474-9855-4677-834a-d7a167b206d1']
-folder = '/home/jupyter/work/resources/DaytimeTranslation/data/images/'
-fname = '/home/jupyter/work/resources/DaytimeTranslation/data/links.csv'
+folder = 'images/'
+fname = 'links.csv'
 
 download_photos(fname, folder, ban_list)
 
 # Clean useless files
-data_path = Path('/home/jupyter/work/resources/DaytimeTranslation/data/images')
+data_path = Path('images/')
 filenames = list(str(p) for p in data_path.glob('**/*.jpg')) + list(str(p) for p in data_path.glob('**/*.png'))
 
 ban_lst = []
