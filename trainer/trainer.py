@@ -5,6 +5,7 @@ from typing import List, Optional
 import torch
 import torch.nn as nn
 import torch.nn.utils as utils
+import torchvision
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import wandb
@@ -106,11 +107,10 @@ class Trainer():
             batch = next(iter(self.train_loader))
             sample = self.model.sample(batch)
 
-        images = (utils.make_grid(sample, nrow=4).detach().cpu().permute(1,2,0)
+        images = (torchvision.utils.make_grid(sample, nrow=4).detach().cpu().permute(1,2,0)
                   * Tensor([0.406, 0.456, 0.485])
                   + Tensor([0.225, 0.224, 0.229])).numpy()
         wandb.log({"generated images": [wandb.Image(images)]})
-
 
     def fit(self):
         n_epochs = self.config["n_epochs"]
