@@ -250,10 +250,10 @@ class HiDTModel(nn.Module):
         x_tilde, _ = self.generator(content=c, style=s, hooks=h)
         s_prime = self.style_encoder(x_prime)
         x_hat, _ = self.generator(content=c, style=s_prime, hooks=h)
-        s_r = torch.randn(len(x), 3).to(self.device)  # TODO просто нормальное?
+        s_r = torch.randn(len(x), 3).to(self.device)
         x_r, _ = self.generator(content=c, style=s_r, hooks=h)
 
-        return torch.cat((x, x_prime, x_tilde, x_hat, x_r))
+        return torch.cat((x, x_tilde, x_hat, x_r, x_prime))
 
     def configure_optimizers(self):
         params_g = list(self.generator.parameters()) + \

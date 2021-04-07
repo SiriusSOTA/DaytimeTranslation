@@ -108,7 +108,7 @@ class Trainer():
             batch = next(iter(self.train_loader))
             sample = self.model.sample(batch)
 
-        images = (torchvision.utils.make_grid(sample, nrow=5).detach().cpu().permute(1,2,0)
+        images = (torchvision.utils.make_grid(sample, nrow=self.config["batch_size"]).detach().cpu().permute(1,2,0)
                   * Tensor([0.229, 0.224, 0.225]) 
                   + Tensor([0.485, 0.456, 0.406])).numpy()
         wandb.log({"generated images": [wandb.Image(images)]})
