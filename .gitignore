@@ -1,0 +1,7 @@
+.ipynb_checkpoints/
+checkpoints/
+wandb/
+data/
+__pycache__/
+*.py[code]
+src/core
