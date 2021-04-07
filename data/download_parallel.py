@@ -11,7 +11,7 @@ from tqdm.auto import tqdm
 
 def func(inp):
     fname, url = inp
-    if not url:
+    if not url or not isinstance(url, str):
         print(fname + ' no url')
         return
     res = sorted([(url.lower().find('.jpg'), 'jpg'),
@@ -58,13 +58,13 @@ ban_list = [
         '051394c7-5884-4d38-a18e-9a822954052d',
         '7c58ac38-7d1c-4f19-b112-b5b43f50a6ef',
         '1a7a7474-9855-4677-834a-d7a167b206d1']
-folder = 'images/'
+folder = '/data/smmiftahov/images/'
 fname = 'links.csv'
 
 download_photos(fname, folder, ban_list)
 
 # Clean useless files
-data_path = Path('images/')
+data_path = Path('/data/smmiftahov/images/')
 filenames = list(str(p) for p in data_path.glob('**/*.jpg')) + list(str(p) for p in data_path.glob('**/*.png'))
 
 ban_lst = []
