@@ -12,7 +12,7 @@ config = {
     "learning_rate": 3e-4,
     "lambdas": [5, 2, 1, 0.1, 4, 1],
     "n_epochs": 100,
-    "batch_size": 4,
+    "batch_size": 2,
     "save_period": 1,
     "log_frequency": 100,
     "picture_frequency": 800,
