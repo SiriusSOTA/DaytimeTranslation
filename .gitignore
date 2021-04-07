@@ -7,3 +7,4 @@ data/serps*
 __pycache__/
 *.py[code]
 src/core
+cmd.ipynb
