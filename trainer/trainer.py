@@ -23,8 +23,8 @@ class Trainer():
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.schedulers = scheduler
-        self.history = {"train": defaultdict(list), 
-                        "val": defaultdict(list)}
+        self.history = {"generator": defaultdict(list), 
+                        "discriminator": defaultdict(list)}
 
     def save_checkpoint(self,
                         epoch: int,
@@ -68,7 +68,7 @@ class Trainer():
 
                 info = self.model.training_step(batch=batch, 
                                                 step=step)
-                loss = info["train"]['loss']
+                loss = info[step]['loss']
                 loss.backward()
                 utils.clip_grad_norm_(parameters=self.model.parameters(),
                                       max_norm=10)
@@ -80,18 +80,13 @@ class Trainer():
                 optimizer.zero_grad()
         
     def _update_logs(self, pbar: tqdm):
-        history_train = self.history["train"]
-        postfix_train = {
-            key + "_train": history_train[key][-1] for key in history_train
-        }
+        current = dict()
+        for key in self.history:
+            for inner_key in self.history[key]:
+                current[key + ":" + inner_key] = self.history[key][inner_key][-1]
 
-        history_val = self.history["val"]
-        postfix_val = {
-            key + "_val": history_val[key][-1] for key in history_val
-        }
-
-        pbar.set_postfix({**postfix_train, **postfix_val})
-        wandb.log({**postfix_train, **postfix_val})
+        pbar.set_postfix(current)
+        wandb.log(current)
 
     def _update_history(self, info):
         for key in info:
@@ -114,9 +109,9 @@ class Trainer():
             self.train_epoch(pbar)
             
             if epoch % self.config["save_period"] == 0:
-                loss = self.history["train"]["loss"]
+                loss = self.history["generator"]["loss"]
                 checkpoint_path = \
-                    Path.cwd() / "checkpoints" / f"loss={loss},e={epoch}.pt"
+                    Path.cwd() / "checkpoints" / f"gen_loss={loss},e={epoch}.pt"
                 self.save_checkpoint(checkpoint_path, epoch)
 
                 with torch.no_grad():
