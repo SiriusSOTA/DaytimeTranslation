@@ -74,6 +74,9 @@ class Trainer():
                 if index % self.config["log_frequency"] == 0:
                     self._update_history(info)
                     self._update_logs(pbar)
+                    
+                if index % self.config["picture_frequencys"] == 0:
+                    self._show_picture()
                 
                 optimizer.step()
                 optimizer.zero_grad()
