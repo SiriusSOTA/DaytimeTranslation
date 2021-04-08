@@ -72,17 +72,17 @@ class Trainer():
                 loss.backward()
                 utils.clip_grad_norm_(parameters=self.model.parameters(),
                                       max_norm=10)
-                
-                if index % self.config["log_frequency"] == 0:
-                    self._update_history(info)
-                    self._update_logs(pbar)
-                    
-                if index % self.config["picture_frequency"] == 0:
-                    self._show_picture()
-                
+
                 optimizer.step()
                 optimizer.zero_grad()
-        
+
+            if index % self.config["log_frequency"] == 0:
+                self._update_history(info)
+                self._update_logs(pbar)
+
+            if index % self.config["picture_frequency"] == 0:
+                self._show_picture()
+
     def _update_logs(self, pbar: tqdm):
         current = dict()
         for key in self.history:
