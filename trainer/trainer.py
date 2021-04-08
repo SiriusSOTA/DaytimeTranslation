@@ -88,15 +88,17 @@ class Trainer():
 
         pbar.set_postfix(current)
         wandb.log(current)
-                
-    def _show_picture(self):
-        with torch.no_grad():
-            batch = next(iter(self.train_loader))
-            sample = self.model.sample(batch)
 
-        images = (torchvision.utils.make_grid(sample, nrow=self.config["batch_size"]).detach().cpu().permute(1,2,0)
-                  * Tensor([0.229, 0.224, 0.225]) 
-                  + Tensor([0.485, 0.456, 0.406])).numpy()
+    def _show_picture(self):
+        batch = next(iter(self.train_loader))
+        sample = self.model.sample(batch).cpu()
+
+        images = (torchvision.utils.make_grid(sample, 
+                                              nrow=self.config["batch_size"],
+                                              normalize=False)
+                  .permute(1, 2, 0) * Tensor([0.229, 0.224, 0.225]) 
+                  + Tensor([0.485, 0.456, 0.406])).numpy().clip(0, 1)
+
         wandb.log({"generated images": [wandb.Image(images)]})
 
     def fit(self):
