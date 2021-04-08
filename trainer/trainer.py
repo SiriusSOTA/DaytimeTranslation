@@ -58,8 +58,7 @@ class Trainer():
     def train_epoch(self) -> None:
         self.model.train()
         
-        pbar = tqdm(self.train_loader, position=1, leave=False,
-                    disable=True)
+        pbar = tqdm(self.train_loader, position=1, leave=False)
         
         for batch in pbar:
             current_iter_info = dict()
