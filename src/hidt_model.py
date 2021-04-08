@@ -253,7 +253,7 @@ class HiDTModel(nn.Module):
         s_r = torch.randn(len(x), 3).to(self.device)
         x_r, _ = self.generator(content=c, style=s_r, hooks=h)
 
-        return torch.cat((x, x_tilde, x_hat, x_r, x_prime))
+        return torch.cat((x, x_hat, x_prime, x_tilde, x_r))
 
     def configure_optimizers(self):
         params_g = list(self.generator.parameters()) + \
