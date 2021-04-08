@@ -26,9 +26,9 @@ from config.hidt_config import config
 
 def main():
     model = HiDTModel(config=config,
-                      device=torch.device('cuda'))
-    model.to(torch.device('cuda'))
-    path = Path('/data/smmiftahov/images')
+            device=torch.device(config["device"]))
+    model.to(torch.device(config["device"]))
+    path = Path(config["data_path"])
     dataset = LandscapesDataset(path)
     train_loader = DataLoader(dataset=dataset,
                               batch_size=config["batch_size"],
