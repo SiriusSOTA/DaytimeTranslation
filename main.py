@@ -24,7 +24,7 @@ def main():
                       config=config,
                       train_loader=train_loader)
 
-    if config["checkpoint_path"] is not None:
+    if config["from_pretrained"]:
         trainer.load_checkpoint(Path(config["checkpoint_path"]))
     
     trainer.fit()
