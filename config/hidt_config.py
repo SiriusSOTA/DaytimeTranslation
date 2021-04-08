@@ -13,9 +13,10 @@ config = {
     "lambdas": [5, 2, 1, 0.1, 4, 1],
     "n_epochs": 100,
     "batch_size": 4,
-    "save_period": 1,
+    "save_period": 800,
     "log_frequency": 100,
-    "picture_frequency": 800,
+    "picture_frequency": 100,
     "device": 'cuda:3',
     "data_path": "data/images",
+    "send_wandb": 50,
 }

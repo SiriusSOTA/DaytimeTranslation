@@ -8,7 +8,7 @@ import torch.nn.utils as utils
 import torchvision
 from torch import Tensor
 from torch.utils.data import DataLoader
-from tqdm import tqdm
+from tqdm.auto import tqdm
 import wandb
 
 
@@ -25,14 +25,14 @@ class Trainer():
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.schedulers = scheduler
+        self.global_step = 0
 
     def save_checkpoint(self,
-                        epoch: int,
                         checkpoint_path: Path,
                         ) -> None:
         checkpoint = {
             "model_state_dict": self.model.state_dict(),
-            "epoch": epoch,
+            "global_step": self.global_step,
         }
 
         for opt in self.optimizers:
@@ -55,10 +55,13 @@ class Trainer():
             optimizer.load_state_dict(checkpoint[f"optimizer_{label}_state_dict"])
 
     @torch.enable_grad()
-    def train_epoch(self, pbar: tqdm) -> None:
+    def train_epoch(self) -> None:
         self.model.train()
-
-        for index, batch in enumerate(self.train_loader):
+        
+        pbar = tqdm(self.train_loader, position=1)
+        
+        for batch in pbar:
+            current_iter_info = dict()
             for opts in self.optimizers:
 
                 step = opts["label"]
@@ -66,9 +69,7 @@ class Trainer():
 
                 info = self.model.training_step(batch=batch, 
                                                 step=step)
-                if index % self.config["log_frequency"] == 5:
-                    self._update_logs(info, pbar)
-
+                current_iter_info = {**current_iter_info, **info}
                 loss = info[step]['loss']
                 loss.backward()
                 utils.clip_grad_norm_(parameters=self.model.parameters(),
@@ -77,17 +78,30 @@ class Trainer():
                 optimizer.step()
                 optimizer.zero_grad()
 
-            if index % self.config["picture_frequency"] == 0:
+            if self.global_step % self.config["picture_frequency"] == 0:
                 self._show_picture()
+                
+            if self.global_step % self.config["save_period"] == 0:
+                checkpoint_path = \
+                    Path.cwd() / "checkpoints" / f"step={self.global_step}.pt"
+                self.save_checkpoint(checkpoint_path)
+
+            self._update_logs(current_iter_info, pbar)
+            self.global_step += 1
 
     def _update_logs(self, info: dict, pbar: tqdm):
         current = dict()
         for key in info:
             for inner_key in info[key]:
-                current[key + ": " + inner_key] = info[key][inner_key]
-
+                value = info[key][inner_key]
+                if isinstance(value, torch.Tensor):
+                    value = value.item()
+                current[key + "-" + inner_key] = value
+        
         pbar.set_postfix(current)
-        wandb.log(current)
+
+        if self.global_step > self.config["send_wandb"]:
+            wandb.log(current)
 
     def _show_picture(self):
         batch = next(iter(self.train_loader))
@@ -103,19 +117,10 @@ class Trainer():
 
     def fit(self):
         n_epochs = self.config["n_epochs"]
-        pbar = tqdm(total=n_epochs, position=0, leave=True)
         wandb.init(project="test-drive", config=self.config)
         wandb.watch(self.model)
+                
+        for epoch in tqdm(range(n_epochs), position=0):
+            self.train_epoch()
 
-        for epoch in range(n_epochs):
-            self.train_epoch(pbar)
-
-            if epoch % self.config["save_period"] == 0:
-                checkpoint_path = \
-                    Path.cwd() / "checkpoints" / f"epoch={epoch}.pt"
-                self.save_checkpoint(epoch, checkpoint_path)
-
-            pbar.update(1)
-
-        pbar.close()
         wandb.finish()
