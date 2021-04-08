@@ -25,8 +25,6 @@ class Trainer():
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.schedulers = scheduler
-        self.history = {"generator": defaultdict(list), 
-                        "discriminator": defaultdict(list)}
 
     def save_checkpoint(self,
                         epoch: int,
@@ -59,7 +57,7 @@ class Trainer():
     @torch.enable_grad()
     def train_epoch(self, pbar: tqdm) -> None:
         self.model.train()
-        
+
         for index, batch in enumerate(self.train_loader):
             for opts in self.optimizers:
 
@@ -68,6 +66,9 @@ class Trainer():
 
                 info = self.model.training_step(batch=batch, 
                                                 step=step)
+                if index % self.config["log_frequency"] == 5:
+                    self._update_logs(info, pbar)
+
                 loss = info[step]['loss']
                 loss.backward()
                 utils.clip_grad_norm_(parameters=self.model.parameters(),
@@ -76,32 +77,17 @@ class Trainer():
                 optimizer.step()
                 optimizer.zero_grad()
 
-            if index % self.config["log_frequency"] == 0:
-                self._update_history(info)
-                self._update_logs(pbar)
-
             if index % self.config["picture_frequency"] == 0:
                 self._show_picture()
 
-    def _update_logs(self, pbar: tqdm):
+    def _update_logs(self, info: dict, pbar: tqdm):
         current = dict()
-        for key in self.history:
-            for inner_key in self.history[key]:
-                current[key + ":" + inner_key] = self.history[key][inner_key][-1]
+        for key in info:
+            for inner_key in info[key]:
+                current[key + ": " + inner_key] = info[key][inner_key]
 
         pbar.set_postfix(current)
         wandb.log(current)
-
-    def _update_history(self, info):
-        for key in info:
-            if key not in info:
-                print(f"Warning: not valid key in history - {key}")
-                continue
-            for inner_key in info[key]:
-                value = info[key][inner_key]
-                if isinstance(value, torch.Tensor):
-                    value = value.item()
-                self.history[key][inner_key].append(value)
                 
     def _show_picture(self):
         with torch.no_grad():
@@ -109,7 +95,7 @@ class Trainer():
             sample = self.model.sample(batch)
 
         images = (torchvision.utils.make_grid(sample, nrow=self.config["batch_size"]).detach().cpu().permute(1,2,0)
-                  * Tensor([0.229, 0.224, 0.225])
+                  * Tensor([0.229, 0.224, 0.225]) 
                   + Tensor([0.485, 0.456, 0.406])).numpy()
         wandb.log({"generated images": [wandb.Image(images)]})
 
@@ -123,10 +109,9 @@ class Trainer():
             self.train_epoch(pbar)
 
             if epoch % self.config["save_period"] == 0:
-                loss = self.history["generator"]["loss"]
                 checkpoint_path = \
-                    Path.cwd() / "checkpoints" / f"gen_loss={loss},e={epoch}.pt"
-                self.save_checkpoint(checkpoint_path, epoch)
+                    Path.cwd() / "checkpoints" / f"epoch={epoch}.pt"
+                self.save_checkpoint(epoch, checkpoint_path)
 
             pbar.update(1)
 
