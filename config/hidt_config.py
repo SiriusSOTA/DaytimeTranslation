@@ -18,5 +18,5 @@ config = {
     "picture_frequency": 100,
     "device": 'cuda:3',
     "data_path": "data/images",
-    "send_wandb": 50,
+    "send_wandb": 150,
 }

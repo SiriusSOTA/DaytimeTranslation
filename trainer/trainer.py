@@ -58,7 +58,8 @@ class Trainer():
     def train_epoch(self) -> None:
         self.model.train()
         
-        pbar = tqdm(self.train_loader, position=1)
+        pbar = tqdm(self.train_loader, position=1, leave=False,
+                    disable=True)
         
         for batch in pbar:
             current_iter_info = dict()
@@ -83,7 +84,7 @@ class Trainer():
                 
             if self.global_step % self.config["save_period"] == 0:
                 checkpoint_path = \
-                    Path.cwd() / "checkpoints" / f"step={self.global_step}.pt"
+                    Path.cwd() / "notcheckpoints" / f"step={self.global_step}.pt"
                 self.save_checkpoint(checkpoint_path)
 
             self._update_logs(current_iter_info, pbar)
