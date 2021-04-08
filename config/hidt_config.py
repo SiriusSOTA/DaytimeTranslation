@@ -19,4 +19,5 @@ config = {
     "device": 'cuda:3',
     "data_path": "data/images",
     "send_wandb": 150,
+    "checkpoint_path": "notcheckpoints/step=5600.pt",
 }

@@ -53,6 +53,8 @@ class Trainer():
             label = opt["label"]
             optimizer = opt["value"]
             optimizer.load_state_dict(checkpoint[f"optimizer_{label}_state_dict"])
+            
+        self.global_step = checkpoint["global_step"] + 1
 
     @torch.enable_grad()
     def train_epoch(self) -> None:
