@@ -42,6 +42,7 @@ class ConvBlock(Module):
             stride=stride,
             padding=padding,
             bias=bias,
+            padding_mode='reflect',
         ) if not transposed else ConvTranspose2d(  # TODO: bilinear?
             in_channels=in_channels,
             out_channels=out_channels,
