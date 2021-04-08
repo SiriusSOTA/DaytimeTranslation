@@ -28,11 +28,12 @@ def main():
     model = HiDTModel(config=config,
                       device=torch.device('cuda'))
     model.to(torch.device('cuda'))
-    path = Path('/home/jupyter/work/resources/DaytimeTranslation/data/images')
+    path = Path('/data/smmiftahov/images')
     dataset = LandscapesDataset(path)
     train_loader = DataLoader(dataset=dataset,
                               batch_size=config["batch_size"],
-                              num_workers=4)
+                              num_workers=4,
+                              drop_last=True)
     trainer = Trainer(model=model,
                       config=config,
                       train_loader=train_loader)
