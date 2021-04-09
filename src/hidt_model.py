@@ -58,12 +58,12 @@ class HiDTModel(nn.Module):
         c, h = self.content_encoder(x)
         s = self.style_encoder(x)
         loss_dist = MetricCalculator.criterion_dist(s)
-        x_tilde, _ = self.generator(content=c, style=s, hooks=h)
+        x_tilde, _ = self.generator(c, s, h)
         loss_rec = self.criterion_rec(x_tilde, x)
 
         # swapping branch
         s_prime = self.style_encoder(x_prime)
-        x_hat, m_hat = self.generator(content=c, style=s_prime, hooks=h)
+        x_hat, m_hat = self.generator(c, s_prime, h)
 
         # loss_seg = 0  TODO: self.criterion_seg(m_hat, m)
         c_hat, h_hat = self.content_encoder(x_hat)
@@ -72,16 +72,16 @@ class HiDTModel(nn.Module):
         loss_s = self.criterion_s(s_hat, s_prime)
 
         c_prime, h_prime = self.content_encoder(x_prime)
-        x_prime_hat, _ = self.generator(content=c_prime, style=s,
-                                        hooks=h_prime)
+        x_prime_hat, _ = self.generator(c_prime, s,
+                                        h_prime)
         s_prime_hat = self.style_encoder(x_prime_hat)
-        x_hat_tilde, _ = self.generator(content=c_hat, style=s_prime_hat,
-                                        hooks=h_hat)
+        x_hat_tilde, _ = self.generator(c_hat, s_prime_hat,
+                                        h_hat)
         loss_cyc = self.criterion_cyc(x_hat_tilde, x)
 
         # noise branch
         s_r = torch.randn(len(x), 3).to(self.device)
-        x_r, m_r = self.generator(content=c, style=s_r, hooks=h)
+        x_r, m_r = self.generator(c, s_r, h)
         # loss_seg_r = 0  TODO: self.criterion_seg_r(m_r, m)
         c_r_tilde, h_r_tilde, = self.content_encoder(x_r)
         s_r_tilde = self.style_encoder(x_r)
@@ -89,8 +89,8 @@ class HiDTModel(nn.Module):
         loss_c_r = self.criterion_c_r(c_r_tilde, c)
         loss_s_r = self.criterion_s_r(s_r_tilde, s_r)
 
-        x_r_tilde, _ = self.generator(content=c_r_tilde, style=s_r_tilde,
-                                      hooks=h_r_tilde)
+        x_r_tilde, _ = self.generator(c_r_tilde, s_r_tilde,
+                                      h_r_tilde)
         loss_rec_r = self.criterion_rec_r(x_r_tilde, x_r)
 
         # all discriminators
@@ -145,29 +145,29 @@ class HiDTModel(nn.Module):
                            ):
         c, h = self.content_encoder(x)
         s = self.style_encoder(x)
-        x_tilde, m = self.generator(content=c, style=s, hooks=h)
+        x_tilde, m = self.generator(c, s, h)
 
         # swapping branch
         s_prime = self.style_encoder(x_prime)
-        x_hat, m_hat = self.generator(content=c, style=s_prime, hooks=h)
+        x_hat, m_hat = self.generator(c, s_prime, h)
 
         c_hat, h_hat = self.content_encoder(x_hat)
         s_hat = self.style_encoder(x_hat)
 
         c_prime, h_prime = self.content_encoder(x_prime)
-        x_prime_hat, _ = self.generator(content=c_prime, style=s,
-                                        hooks=h_prime)
+        x_prime_hat, _ = self.generator(c_prime, s,
+                                        h_prime)
         s_prime_hat = self.style_encoder(x_prime_hat)
-        x_hat_tilde, _ = self.generator(content=c_hat, style=s_prime_hat,
-                                        hooks=h_hat)
+        x_hat_tilde, _ = self.generator(c_hat, s_prime_hat,
+                                        h_hat)
 
         # noise branch
         s_r = torch.randn(len(x), 3).to(self.device)
-        x_r, m_r = self.generator(content=c, style=s_r, hooks=h)
+        x_r, m_r = self.generator(c, s_r, h)
         c_r_tilde, h_r_tilde, = self.content_encoder(x_r)
         s_r_tilde = self.style_encoder(x_r)
-        x_r_tilde, _ = self.generator(content=c_r_tilde, style=s_r_tilde,
-                                      hooks=h_r_tilde)
+        x_r_tilde, _ = self.generator(c_r_tilde, s_r_tilde,
+                                      h_r_tilde)
 
         # all discriminators
         du_x_hat = self.uncond_discriminator(x_hat)
