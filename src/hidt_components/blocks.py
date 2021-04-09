@@ -2,7 +2,6 @@ from collections import OrderedDict
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.nn import (
     BatchNorm2d,
     Conv2d,
@@ -12,8 +11,7 @@ from torch.nn import (
     Linear,
     MaxPool2d,
     Module,
-    ModuleDict,
-    ReLU,
+    LeakyReLU,
     Sequential,
 )
 
@@ -32,7 +30,8 @@ class ConvBlock(Module):
             instance_norm: bool = False,
             pool: bool = False,
             act: bool = True,
-        ):
+            padding_mode: str = "zeros"
+    ):
         super().__init__()
         block_ordered_dict = OrderedDict()
         block_ordered_dict['conv'] = Conv2d(
@@ -42,7 +41,7 @@ class ConvBlock(Module):
             stride=stride,
             padding=padding,
             bias=bias,
-            padding_mode='reflect',
+            padding_mode=padding_mode,
         ) if not transposed else ConvTranspose2d(  # TODO: bilinear?
             in_channels=in_channels,
             out_channels=out_channels,
@@ -62,7 +61,7 @@ class ConvBlock(Module):
         if pool:
             block_ordered_dict['pool'] = MaxPool2d(kernel_size=2)
         if act:
-            block_ordered_dict['act'] = ReLU()
+            block_ordered_dict['act'] = LeakyReLU()
         self.conv_block = Sequential(block_ordered_dict)
 
     def forward(self, x):
@@ -77,7 +76,8 @@ class ResBlock(Module):
             out_channels: int,
             kernel_size: int = 3,
             padding: int = 1,
-        ):
+            padding_mode: str = "zeros"
+    ):
         super().__init__()
         self.res_block = Sequential(
             ConvBlock(
@@ -87,6 +87,7 @@ class ResBlock(Module):
                 padding=padding,
                 bias=False,
                 instance_norm=True,
+                padding_mode=padding_mode,
             ),
             ConvBlock(
                 in_channels=out_channels,
@@ -96,6 +97,7 @@ class ResBlock(Module):
                 bias=False,
                 instance_norm=True,
                 act=False,
+                padding_mode=padding_mode,
             ),
         )
 
@@ -107,19 +109,19 @@ class ResBlock(Module):
 def get_adastats(features):
     bs, c = features.shape[:2]
     features = features.view(bs, c, -1)
-    mean = features.mean(dim=2).view(bs,c,1,1)
-    std = features.var(dim=2).sqrt().view(bs,c,1,1)
+    mean = features.mean(dim=2).view(bs, c, 1, 1)
+    std = features.var(dim=2).sqrt().view(bs, c, 1, 1)
     return mean, std
 
 
 def AdaIN(content_feat, style_feat):
-    #calculating channel and batch specific stats
+    # calculating channel and batch specific stats
     smean, sstd = get_adastats(style_feat)
     cmean, cstd = get_adastats(content_feat)
     csize = content_feat.size()
     norm_content = (
-        (content_feat - cmean.expand(csize)) /
-        (cstd.expand(csize) + 1e-3)
+            (content_feat - cmean.expand(csize)) /
+            (cstd.expand(csize) + 1e-3)
     )
     return norm_content * sstd.expand(csize) + smean.expand(csize)
 
@@ -129,7 +131,7 @@ class AdaSkipBlock(Module):
             self,
             in_channels,
             out_channels,
-        ):
+    ):
         super().__init__()
         self.in_channels = in_channels
         self.ada_creator = nn.Sequential(
@@ -148,7 +150,7 @@ class AdaSkipBlock(Module):
         )
         self.ada = AdaIN
         self.dense = ConvBlock(
-            in_channels=in_channels*2,
+            in_channels=in_channels * 2,
             out_channels=in_channels,
         )
 
@@ -162,11 +164,7 @@ class AdaSkipBlock(Module):
 
 
 class AdaResBlock(Module):
-    def __init__(
-            self,
-            in_channels: int,
-            out_channels: int,
-        ):
+    def __init__(self, in_channels: int, out_channels: int):
         super().__init__()
 
         self.ada_block = AdaSkipBlock(
@@ -192,12 +190,7 @@ class AdaResBlock(Module):
         else:
             self.skip = Identity()
 
-    def forward(
-            self,
-            content,
-            style,
-            hook,
-        ):
+    def forward(self, content, style, hook):
         ada = self.ada_block(content, style, hook)
         res = self.res_block(ada)
 

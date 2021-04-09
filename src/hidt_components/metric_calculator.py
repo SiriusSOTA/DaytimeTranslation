@@ -7,6 +7,7 @@ from torch import Tensor
 from torch.nn import Module
 from torch.utils.data import DataLoader
 from torchvision.models import inception_v3 as Inception
+
 from config.hidt_config import config
 
 
@@ -18,7 +19,7 @@ class MetricCalculator:
             sigma_1: Tensor,
             sigma_2: Tensor,
             eps: float = 1e-6,
-        ):
+    ):
         mu_1 = mu_1.numpy()
         mu_2 = mu_2.numpy()
         sigma_1 = sigma_1.numpy()
@@ -37,10 +38,10 @@ class MetricCalculator:
             covmean = covmean.real
 
         distance = (
-            delta_mu @ delta_mu +
-            sigma1.trace() +
-            sigma2.trace() -
-            2 * covmean.trace()
+                delta_mu @ delta_mu
+                + sigma1.trace()
+                + sigma2.trace()
+                - 2 * covmean.trace()
         )
 
         return distance
@@ -50,10 +51,10 @@ class MetricCalculator:
             model,
             dataloader,
             inception,
-        ):
+    ):
 
         device = torch.device(
-            config['device'] if next(a.parameters()).is_cuda else
+            config['device'] if next(model.parameters()).is_cuda else
             'cpu',
         )
         true_vecs, ae_vecs = [], []
@@ -62,7 +63,8 @@ class MetricCalculator:
             bs = len(images)
             images = images.to(device)
             true_vecs.append(inception(images)[0].reshape(bs, -1))
-            ae_vecs.append(inception(model.generate(images))[0].reshape(bs, -1))
+            ae_vecs.append(
+                inception(model.generate(images))[0].reshape(bs, -1))
 
         true_data = torch.stack(
             true_vecs,
@@ -85,7 +87,7 @@ class MetricCalculator:
             model: Module,
             dataloader: DataLoader,
             classifier: Optional[Module] = None,
-        ):
+    ):
         if classifier is None:
             classifier = Inception(
                 pretrained=True,
@@ -125,7 +127,7 @@ class MetricCalculator:
 
     @classmethod
     def criterion_dist(cls, style):
-        styles = style #torch.cat([orig_style, orig2_style])
+        styles = style  # torch.cat([orig_style, orig2_style])
         smeans = styles.mean()
         cov_m = cls.cov(styles)
         cov_diag = torch.diag(cov_m)
@@ -133,9 +135,9 @@ class MetricCalculator:
         device = style.device
 
         loss = (
-            cls.one_norm(smeans, torch.ones(1).to(device)) +
-            cls.one_norm(cov_m, torch.eye(cov_m.shape[0]).to(device)) +
-            cls.one_norm(cov_diag, torch.ones(cov_diag.shape).to(device))
+                cls.one_norm(smeans, torch.ones(1).to(device))
+                + cls.one_norm(cov_m, torch.eye(cov_m.shape[0]).to(device))
+                + cls.one_norm(cov_diag, torch.ones(cov_diag.shape).to(device))
         )
 
         return loss

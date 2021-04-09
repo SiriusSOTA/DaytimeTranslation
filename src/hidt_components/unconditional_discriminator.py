@@ -10,9 +10,7 @@ from .blocks import ConvBlock, ResBlock
 
 
 class UnconditionalDiscriminator(Module):
-    def __init__(
-            self,
-        ):
+    def __init__(self):
         super().__init__()
         self.model = Sequential(
             ConvBlock(
@@ -55,23 +53,7 @@ class UnconditionalDiscriminator(Module):
             Linear(256, 1),
         )
 
-    def forward(
-            self,
-            image,
-        ):
+    def forward(self, image):
         x = self.model(image)
 
         return x
-
-
-if __name__ == '__main__':
-    model = UnconditionalDiscriminator()
-    n_params = ParametersCounter.count(
-        model=model,
-        trainable=True,
-    )
-    print(n_params)
-
-    inputs = torch.randn(4, 3, 256, 256)
-    outputs = model(inputs)
-    print(outputs.shape)

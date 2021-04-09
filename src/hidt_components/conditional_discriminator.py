@@ -11,6 +11,7 @@ from .blocks import ConvBlock, ResBlock
 
 class ConditionalDiscriminator(Module):
     "Projection based discrminator, adapted from: https://github.com/XHChen0528/SNGAN_Projection_Pytorch"
+
     def __init__(self, num_feat=64):
         super().__init__()
         self.num_feat = num_feat
@@ -23,34 +24,34 @@ class ConditionalDiscriminator(Module):
             ),
             ConvBlock(
                 num_feat,
-                num_feat*(2**1),
+                num_feat * (2 ** 1),
                 stride=2,
             ),
             ResBlock(
-                num_feat*(2**1),
-                num_feat*(2**1),
+                num_feat * (2 ** 1),
+                num_feat * (2 ** 1),
             ),
             ConvBlock(
-                num_feat*(2**1),
-                num_feat*(2**2),
+                num_feat * (2 ** 1),
+                num_feat * (2 ** 2),
                 stride=2,
             ),
             ResBlock(
-                num_feat*(2**2),
-                num_feat*(2**2),
+                num_feat * (2 ** 2),
+                num_feat * (2 ** 2),
             ),
             ConvBlock(
-                num_feat*(2**2),
-                num_feat*(2**3),
+                num_feat * (2 ** 2),
+                num_feat * (2 ** 3),
                 stride=2,
             ),
             ResBlock(
-                num_feat*(2**3),
-                num_feat*(2**3),
+                num_feat * (2 ** 3),
+                num_feat * (2 ** 3),
             ),
             ConvBlock(
-                num_feat*(2**3),
-                num_feat*(2**4),
+                num_feat * (2 ** 3),
+                num_feat * (2 ** 4),
                 stride=2,
             ),
         )
@@ -81,16 +82,3 @@ class ConditionalDiscriminator(Module):
             output += torch.sum(self.style(y) * h, dim=1, keepdim=True)
 
         return output
-
-
-if __name__ == '__main__':
-    model = ConditionalDiscriminator()
-    n_params = ParametersCounter.count(
-        model=model,
-        trainable=True,
-    )
-    print(n_params)
-
-    inputs = torch.randn(4, 3, 256, 256)
-    outputs = model(inputs)
-    print(outputs.shape)

@@ -10,9 +10,7 @@ from .blocks import ConvBlock
 
 
 class StyleEncoder(Module):
-    def __init__(
-            self,
-        ):
+    def __init__(self):
         super().__init__()
         self.encoder = Sequential(
             ConvBlock(
@@ -43,9 +41,6 @@ class StyleEncoder(Module):
             Rearrange('b c 1 1 -> b c'),
         )
 
-    def forward(
-            self,
-            image,
-        ):
+    def forward(self, image):
         x = self.encoder(image)
         return x

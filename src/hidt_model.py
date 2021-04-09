@@ -17,7 +17,6 @@ class HiDTModel(nn.Module):
     def __init__(self,
                  config: dict,
                  device: torch.device = torch.device("cpu"),
-                 learning_rate: float = 3e-4,
                  verbose: bool = True,
                  ):
         super().__init__()
@@ -215,10 +214,7 @@ class HiDTModel(nn.Module):
 
         return {"discriminator": info}
 
-    def training_step(self,
-                      batch,
-                      step: str
-                      ):
+    def training_step(self, batch, step: str):
         self.train()
         x, x_prime = batch
         x = x.to(self.device)

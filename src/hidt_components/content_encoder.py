@@ -1,10 +1,7 @@
-import torch
-from torch.nn import (
-    Module,
-    Sequential,
-)
+from torch.nn import Module, Sequential
 
 from .blocks import ConvBlock, ResBlock
+
 
 class ContentEncoder(Module):
     def __init__(self):

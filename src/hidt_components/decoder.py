@@ -1,16 +1,10 @@
-import torch
-from torch.nn import (
-    Module,
-    Sequential,
-)
+from torch.nn import Module
 
 from .blocks import AdaResBlock, ConvBlock
 
 
 class Decoder(Module):
-    def __init__(
-            self,
-        ):
+    def __init__(self):
         super().__init__()
         self.ada_res_block_1 = AdaResBlock(
             in_channels=128,
@@ -47,12 +41,7 @@ class Decoder(Module):
             out_channels=3,
         )
 
-    def forward(
-            self,
-            content,
-            style,
-            hooks,
-        ):
+    def forward(self, content, style, hooks):
         x = self.ada_res_block_1(content, style, content)
         x = self.ada_res_block_2(x, style, hooks[3])
         x = self.conv_block_3(x)
