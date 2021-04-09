@@ -70,11 +70,11 @@ class Trainer():
 
         def hook_fn(layer, input, output):
             if isinstance(output, tuple):
-                output = torch.cat(output)
+                output = output[0]
             output = output.detach().cpu()
             if not output.isfinite().all():
                 if isinstance(input, tuple):
-                    input = torch.cat(input)
+                    input = input[0]
                 input = input.detach().cpu()
                 problems[str(layer)] = {"input": input.numpy(),
                                         "output": output.numpy()}
