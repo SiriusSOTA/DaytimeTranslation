@@ -8,3 +8,6 @@ __pycache__/
 *.py[code]
 src/core
 cmd.ipynb
+.idea/
+*.swp
+*.pt

@@ -10,6 +10,7 @@ from src.hidt_model import HiDTModel
 from trainer.trainer import Trainer
 from config.hidt_config import config
 
+
 def main():
     model = HiDTModel(config=config,
             device=torch.device(config["device"]))
@@ -18,7 +19,7 @@ def main():
     dataset = LandscapesDataset(path)
     train_loader = DataLoader(dataset=dataset,
                               batch_size=config["batch_size"],
-                              num_workers=4,
+                              num_workers=config["num_workers"],
                               drop_last=True)
     trainer = Trainer(model=model,
                       config=config,
@@ -28,6 +29,7 @@ def main():
         trainer.load_checkpoint(Path(config["checkpoint_path"]))
     
     trainer.fit()
-    
+
+
 if __name__ == "__main__":
     main()
