@@ -69,8 +69,12 @@ class Trainer():
         problems = dict()
 
         def hook_fn(layer, input, output):
+            if isinstance(output, tuple):
+                output = output[0]
             output = output.detach().cpu()
             if not output.isfinite().all():
+                if isinstance(input, tuple):
+                    input = input[0]
                 input = input.detach().cpu()
                 problems[str(layer)] = {"input": input.numpy(),
                                         "output": output.numpy()}
