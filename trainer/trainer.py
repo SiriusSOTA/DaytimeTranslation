@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import List, Optional
 import sys
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.utils as utils
