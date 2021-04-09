@@ -65,7 +65,7 @@ class HiDTModel(nn.Module):
         s_prime = self.style_encoder(x_prime)
         x_hat, m_hat = self.generator(content=c, style=s_prime, hooks=h)
 
-        loss_seg = 0  # TODO: self.criterion_seg(m_hat, m)
+        # loss_seg = 0  TODO: self.criterion_seg(m_hat, m)
         c_hat, h_hat = self.content_encoder(x_hat)
         s_hat = self.style_encoder(x_hat)
         loss_c = self.criterion_c(c_hat, c)
@@ -82,7 +82,7 @@ class HiDTModel(nn.Module):
         # noise branch
         s_r = torch.randn(len(x), 3).to(self.device)
         x_r, m_r = self.generator(content=c, style=s_r, hooks=h)
-        loss_seg_r = 0  # TODO: self.criterion_seg_r(m_r, m)
+        # loss_seg_r = 0  TODO: self.criterion_seg_r(m_r, m)
         c_r_tilde, h_r_tilde, = self.content_encoder(x_r)
         s_r_tilde = self.style_encoder(x_r)
 
@@ -101,11 +101,11 @@ class HiDTModel(nn.Module):
                 MetricCalculator.criterion_adv(
                     du_x_hat,
                     torch.ones_like(du_x_hat)
-                ) +
-                MetricCalculator.criterion_adv(
-                    dc_x_hat,
-                    torch.ones_like(dc_x_hat),
                 )
+                + MetricCalculator.criterion_adv(
+            dc_x_hat,
+            torch.ones_like(dc_x_hat),
+        )
         )
 
         du_x_r = self.uncond_discriminator(x_r)
@@ -176,11 +176,11 @@ class HiDTModel(nn.Module):
                 MetricCalculator.criterion_adv(
                     du_x_hat,
                     torch.zeros_like(du_x_hat)
+                ) +
+                MetricCalculator.criterion_adv(
+                    dc_x_hat,
+                    torch.zeros_like(dc_x_hat),
                 )
-                + MetricCalculator.criterion_adv(
-            dc_x_hat,
-            torch.zeros_like(dc_x_hat),
-        )
         )
 
         du_x_r = self.uncond_discriminator(x_r)
