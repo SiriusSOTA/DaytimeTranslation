@@ -15,11 +15,11 @@ import wandb
 
 
 class Trainer():
-    def __init__(self, 
+    def __init__(self,
                  model: nn.Module,
                  config: dict,
                  train_loader: DataLoader,
-                 val_loader: DataLoader=None,
+                 val_loader: DataLoader = None,
                  scheduler=None):
         self.model = model
         self.config = config
@@ -41,11 +41,12 @@ class Trainer():
             label = opt["label"]
             optimizer = opt["value"]
 
-            checkpoint[f"optimizer_{label}_state_dict"] = optimizer.state_dict()
+            checkpoint[
+                f"optimizer_{label}_state_dict"] = optimizer.state_dict()
 
         torch.save(checkpoint, checkpoint_path)
 
-    def load_checkpoint(self, 
+    def load_checkpoint(self,
                         checkpoint_path: Path,
                         ) -> None:
         checkpoint = torch.load(checkpoint_path)
@@ -54,44 +55,46 @@ class Trainer():
         for opt in self.optimizers:
             label = opt["label"]
             optimizer = opt["value"]
-            optimizer.load_state_dict(checkpoint[f"optimizer_{label}_state_dict"])
-            
+            optimizer.load_state_dict(
+                checkpoint[f"optimizer_{label}_state_dict"])
+
         self.global_step = checkpoint["global_step"] + 1
 
     @torch.enable_grad()
     def train_epoch(self) -> None:
         self.model.train()
-        
+
         pbar = tqdm(self.train_loader, position=1, leave=False)
-        
+
         problems = dict()
-        
+
         def hook_fn(layer, input, output):
             output = output.detach().cpu()
             if not output.isfinite().all():
                 input = input.detach().cpu()
-                problems[str(layer)] = {"input": input.numpy(), 
+                problems[str(layer)] = {"input": input.numpy(),
                                         "output": output.numpy()}
-        
+
         if self.config["debug"]:
-            for name, layer in model._modules.items():
+            for name, layer in self.model._modules.items():
                 if isinstance(layer, nn.Sequential):
                     pass
                 else:
                     layer.register_forward_hook(hook_fn)
-        
+
         for batch in pbar:
             current_iter_info = dict()
             for opts in self.optimizers:
 
                 step = opts["label"]
                 optimizer = opts["value"]
-                
+
                 if len(problems) > 0:
                     print("Nans in:", problems.keys(), file=sys.stderr)
-                    import pdb; pdb.set_trace()
-                
-                info = self.model.training_step(batch=batch, 
+                    import pdb;
+                    pdb.set_trace()
+
+                info = self.model.training_step(batch=batch,
                                                 step=step)
                 current_iter_info = {**current_iter_info, **info}
                 loss = info[step]['loss']
@@ -104,7 +107,7 @@ class Trainer():
 
             if self.global_step % self.config["picture_frequency"] == 0:
                 self._show_picture()
-                
+
             if self.global_step % self.config["save_period"] == 0:
                 checkpoint_path = \
                     Path.cwd() / "notcheckpoints" / f"step={self.global_step}.pt"
@@ -121,7 +124,7 @@ class Trainer():
                 if isinstance(value, torch.Tensor):
                     value = value.item()
                 current[key + "-" + inner_key] = value
-        
+
         pbar.set_postfix(current)
 
         if self.global_step > self.config["send_wandb"]:
@@ -131,10 +134,10 @@ class Trainer():
         batch = next(iter(self.train_loader))
         sample = self.model.sample(batch).cpu()
 
-        images = (torchvision.utils.make_grid(sample, 
+        images = (torchvision.utils.make_grid(sample,
                                               nrow=self.config["batch_size"],
                                               normalize=False)
-                  .permute(1, 2, 0) * Tensor([0.229, 0.224, 0.225]) 
+                  .permute(1, 2, 0) * Tensor([0.229, 0.224, 0.225])
                   + Tensor([0.485, 0.456, 0.406])).numpy()
 
         np.nan_to_num(images, copy=False, nan=1)
@@ -146,7 +149,7 @@ class Trainer():
         n_epochs = self.config["n_epochs"]
         wandb.init(project="test-drive", config=self.config)
         wandb.watch(self.model)
-                
+
         for epoch in tqdm(range(n_epochs), position=0):
             self.train_epoch()
 
