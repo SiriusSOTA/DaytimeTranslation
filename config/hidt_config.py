@@ -18,8 +18,9 @@ config = {
     "log_frequency": 100,
     "picture_frequency": 100,
     "device": 'cuda:3',
-    "data_path": "data/smmiftahov/images",
+    "data_path": "data/images",
     "send_wandb": 150,
     "from_pretrained": True,
-    "checkpoint_path": "notcheckpoints/step=24000.pt",
+    "checkpoint_path": "notcheckpoints/step=30400.pt",
+    "debug": True,
 }

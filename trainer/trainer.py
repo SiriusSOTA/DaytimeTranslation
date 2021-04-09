@@ -1,6 +1,7 @@
 from collections import defaultdict
 from pathlib import Path
 from typing import List, Optional
+import sys
 
 import torch
 import torch.nn as nn
@@ -62,13 +63,33 @@ class Trainer():
         
         pbar = tqdm(self.train_loader, position=1, leave=False)
         
+        problems = dict()
+        
+        def hook_fn(layer, input, output):
+            output = output.detach().cpu()
+            if not output.isfinite().all():
+                input = input.detach().cpu()
+                problems[str(layer)] = {"input": input.numpy(), 
+                                        "output": output.numpy()}
+        
+        if self.config["debug"]:
+            for name, layer in model._modules.items():
+                if isinstance(layer, nn.Sequential):
+                    pass
+                else:
+                    layer.register_forward_hook(hook_fn)
+        
         for batch in pbar:
             current_iter_info = dict()
             for opts in self.optimizers:
 
                 step = opts["label"]
                 optimizer = opts["value"]
-
+                
+                if len(problems) > 0:
+                    print("Nans in:", problems.keys(), file=sys.stderr)
+                    import pdb; pdb.set_trace()
+                
                 info = self.model.training_step(batch=batch, 
                                                 step=step)
                 current_iter_info = {**current_iter_info, **info}
@@ -113,7 +134,10 @@ class Trainer():
                                               nrow=self.config["batch_size"],
                                               normalize=False)
                   .permute(1, 2, 0) * Tensor([0.229, 0.224, 0.225]) 
-                  + Tensor([0.485, 0.456, 0.406])).numpy().clip(0, 1)
+                  + Tensor([0.485, 0.456, 0.406])).numpy()
+
+        np.nan_to_num(images, copy=False, nan=1)
+        images = images.clip(0, 1)
 
         wandb.log({"generated images": [wandb.Image(images)]})
 
