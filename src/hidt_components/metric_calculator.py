@@ -7,6 +7,7 @@ from torch import Tensor
 from torch.nn import Module
 from torch.utils.data import DataLoader
 from torchvision.models import inception_v3 as Inception
+from config.hidt_config import config
 
 
 class MetricCalculator:
@@ -52,7 +53,7 @@ class MetricCalculator:
         ):
 
         device = torch.device(
-            'cuda' if next(a.parameters()).is_cuda else
+            config['device'] if next(a.parameters()).is_cuda else
             'cpu',
         )
         true_vecs, ae_vecs = [], []

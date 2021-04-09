@@ -1,5 +1,5 @@
 from pathlib import Path
-from random import randint
+from random import choice
 from typing import List
 
 import matplotlib.pyplot as plt
@@ -52,8 +52,7 @@ class LandscapesDataset(Dataset):
         if self.transform:
             image = self.transform(image=image)['image']
 
-        random_idx = randint(0, len(self.filenames) - 1)
-        random_filename = self.filenames[random_idx]
+        random_filename = choice(self.filenames)
         random_image = cv2.imread(random_filename)
         random_image = cv2.cvtColor(random_image, cv2.COLOR_BGR2RGB)
 
