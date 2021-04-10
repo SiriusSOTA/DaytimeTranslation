@@ -1,4 +1,5 @@
 from collections import defaultdict
+from typing import Dict, Any
 from pathlib import Path
 from typing import List, Optional
 import sys
@@ -31,7 +32,8 @@ class Trainer():
 
     def save_checkpoint(self,
                         checkpoint_path: Path,
-                        ) -> None:
+                        save: bool = True
+                        ) -> Dict[Any, Any]:
         checkpoint = {
             "model_state_dict": self.model.state_dict(),
             "global_step": self.global_step,
@@ -43,8 +45,9 @@ class Trainer():
 
             checkpoint[
                 f"optimizer_{label}_state_dict"] = optimizer.state_dict()
-
-        torch.save(checkpoint, checkpoint_path)
+        if save:
+            torch.save(checkpoint, checkpoint_path)
+        return checkpoint
 
     def load_checkpoint(self,
                         checkpoint_path: Path,
@@ -76,14 +79,27 @@ class Trainer():
                 if isinstance(input, tuple):
                     input = input[0]
                 input = input.detach().cpu()
-                problems[str(layer)] = {"input": input.numpy(),
+                problems[str(type(layer))] = {"input": input.numpy(),
                                         "output": output.numpy()}
+
+        def backward_hook(layer, grad_input, grad_output):
+            if isinstance(grad_input, tuple):
+                grad_input = grad_input[0]
+            if isinstance(grad_output, tuple):
+                grad_output = grad_output[0]
+            grad_input.detach().cpu()
+            grad_output.detach().cpu()
+            if not grad_input.isfinite().all() or \
+                    not grad_output.isfinite().all():
+                problems[str(type(layer))] = {'grad_input': grad_input.numpy(),
+                                              'grad_output': grad_output.numpy()}
 
         if self.config["debug"]:
             for name, layer in self.model._modules.items():
                 if isinstance(layer, nn.Sequential):
                     pass
                 else:
+                    layer.register_backward_hook(backward_hook)
                     layer.register_forward_hook(hook_fn)
 
         for batch in pbar:
@@ -93,13 +109,22 @@ class Trainer():
                 step = opts["label"]
                 optimizer = opts["value"]
 
+                info = self.model.training_step(batch=batch,
+                                                step=step)
                 if len(problems) > 0:
-                    print("Nans in:", problems.keys(), file=sys.stderr)
+                    torch.save(prev_step, Path(self.config['checkpoint_path'] + '_last'))
+                    with open ("logs.txt", 'w') as f:
+                        for layer, values in problems.items():
+                            f.write(layer + '\n')
+                            f.write("input\n")
+                            f.write(values['input'])
+                            f.write('output\n')
+                            f.write(values['output'])
+                            f.write('\n\n\n')
                     import pdb;
                     pdb.set_trace()
 
-                info = self.model.training_step(batch=batch,
-                                                step=step)
+                prev_step = self.save_checkpoint(Path('/'), save=False)
                 current_iter_info = {**current_iter_info, **info}
                 loss = info[step]['loss']
                 loss.backward()
