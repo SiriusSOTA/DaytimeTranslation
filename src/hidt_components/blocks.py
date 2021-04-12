@@ -64,7 +64,7 @@ class ConvBlock(Module):
             norm: Optional[str] = None,
             pool: bool = False,
             act: bool = True,
-            padding_mode: str = "zeros"
+            padding_mode: str = "reflect"
     ):
         block_ordered_dict = OrderedDict()
         block_ordered_dict['conv'] = Conv2d(
