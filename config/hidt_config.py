@@ -24,6 +24,7 @@ config = {
     "send_wandb": 150,
     "from_pretrained": False,
     "checkpoint_path": "notcheckpoints/step=30400.pt",
+    "save_checkpoint_path": "notcheckpoints/",
     "debug": True,
     "test_size": 0.05,
     "validate_period": 500,
@@ -32,11 +33,18 @@ config = {
 
 if PROFILE == "BULAT":
     config["data_path"] = "/data/bvshelhonov/images"
+    config["save_checkpoint_path"] = "notcheckpoints/"
 elif PROFILE == "NASTIA":
+    config["data_path"] = "/data/bvshelhonov/images"
+    config["save_checkpoint_path"] = "notcheckpoints/"
     raise NotImplementedError()
 elif PROFILE == "SAIDASH":
+    config["data_path"] = "/data/bvshelhonov/images"
+    config["save_checkpoint_path"] = "notcheckpoints/"
     raise NotImplementedError()
 elif PROFILE == "SPHERE":
+    config["data_path"] = "/data/bvshelhonov/images"
+    config["save_checkpoint_path"] = "notcheckpoints/"
     raise NotImplementedError()
 else:
     raise ValueError("Invalid profile")

@@ -34,14 +34,14 @@ class Trainer():
               "on" if self.val_loader is not None else "off")
 
     def save_checkpoint(self,
-                        checkpoint_path: Path,
                         save: bool = True
                         ) -> Dict[Any, Any]:
         checkpoint = {
             "model_state_dict": self.model.state_dict(),
             "global_step": self.global_step,
         }
-
+        path = Path() / self.config["save_checkpoint_path"] \
+               / f"step={self.global_step}.pt"
         for opt in self.optimizers:
             label = opt["label"]
             optimizer = opt["value"]
@@ -49,7 +49,7 @@ class Trainer():
             checkpoint[
                 f"optimizer_{label}_state_dict"] = optimizer.state_dict()
         if save:
-            torch.save(checkpoint, checkpoint_path)
+            torch.save(checkpoint, path)
         return checkpoint
 
     def load_checkpoint(self,
@@ -165,7 +165,7 @@ class Trainer():
                     import pdb;
                     pdb.set_trace()
 
-                prev_step = self.save_checkpoint(Path('/'), save=False)
+                prev_step = self.save_checkpoint(save=False)
                 current_iter_info = {**current_iter_info, **info}
 
                 if step == "generator":
@@ -186,9 +186,7 @@ class Trainer():
                 self._show_picture()
 
             if self.global_step % self.config["save_period"] == 0:
-                checkpoint_path = \
-                    Path.cwd() / "notcheckpoints" / f"step={self.global_step}.pt"
-                self.save_checkpoint(checkpoint_path)
+                self.save_checkpoint()
 
             self._update_logs(current_iter_info, pbar)
             self.global_step += 1
@@ -225,7 +223,7 @@ class Trainer():
         wandb.init(project="test-drive", config=self.config)
         wandb.watch(self.model)
 
-        for epoch in tqdm(range(n_epochs), position=0):
+        for _ in tqdm(range(n_epochs), position=0):
             self.train_epoch()
 
         wandb.finish()
