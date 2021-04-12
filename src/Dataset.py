@@ -14,7 +14,7 @@ from albumentations import (
 
 from albumentations.pytorch import ToTensorV2
 from torch import Tensor
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, random_split
 
 
 new_size = 256
@@ -60,3 +60,10 @@ class LandscapesDataset(Dataset):
             random_image = self.transform(image=random_image)['image']
 
         return image, random_image
+
+
+def train_test_split(dataset: Dataset, test_size=0.2):
+    test_size = int(len(dataset) * test_size)
+    train_size = len(dataset) - test_size
+    
+    return random_split(dataset, [train_size, test_size])

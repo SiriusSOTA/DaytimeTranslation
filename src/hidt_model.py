@@ -51,7 +51,8 @@ class HiDTModel(nn.Module):
 
     def generator_step(self,
                        x: torch.Tensor,
-                       x_prime: torch.Tensor
+                       x_prime: torch.Tensor,
+                       validate: bool,
                        ):
         # autoencoding branch
 
@@ -129,19 +130,30 @@ class HiDTModel(nn.Module):
         loss = 0
         for i, _ in enumerate(loss_terms):
             loss += self.lambdas[i] * loss_terms[i]
+        
+        if validate:
+            prefix = "val-gen: "
+        else:
+            prefix = "train-gen: "
+        
+        info = {
+            prefix + "loss": loss,
+            prefix + "adversarial loss": loss_adv + loss_adv_r,
+            prefix + "image reconstruction loss": (loss_rec
+                                                   + loss_rec_r 
+                                                   + loss_cyc),
+            prefix + "content reconstruction loss": loss_c + loss_c_r,
+            prefix + "style reconstruction loss": loss_s,
+            prefix + "random style reconstruction loss": loss_s_r,
+            prefix + "style distribution loss": loss_dist
+        }
 
-        info = {"loss": loss,
-                "adversarial loss": loss_adv + loss_adv_r,
-                "image reconstruction loss": loss_rec + loss_rec_r + loss_cyc,
-                "content reconstruction loss": loss_c + loss_c_r,
-                "style reconstruction loss": loss_s,
-                "random style reconstruction loss": loss_s_r,
-                "style distribution loss": loss_dist}
-        return {"generator": info}
+        return info
 
     def discriminator_step(self,
                            x: torch.Tensor,
-                           x_prime: torch.Tensor
+                           x_prime: torch.Tensor,
+                           validate: bool,
                            ):
         c, h = self.content_encoder(x)
         s = self.style_encoder(x)
@@ -205,34 +217,40 @@ class HiDTModel(nn.Module):
 
         loss = loss_adv_hat + loss_adv_r + loss_adv_real
 
+        if validate:
+            prefix = "val-dis: "
+        else:
+            prefix = "train-dis: "
+
         info = {
-            "loss": loss,
-            "loss_adv_hat": loss_adv_hat,
-            "loss_adv_r": loss_adv_r,
-            "loss_adv_real": loss_adv_real
+            prefix + "loss": loss,
+            prefix + "loss_adv_hat": loss_adv_hat,
+            prefix + "loss_adv_r": loss_adv_r,
+            prefix + "loss_adv_real": loss_adv_real
         }
 
-        return {"discriminator": info}
+        return info
 
-    def training_step(self, batch, step: str):
-        self.train()
+    def step(self, batch, step: str, validate: bool = False):
         x, x_prime = batch
         x = x.to(self.device)
         x_prime = x_prime.to(self.device)
 
         if step == "generator":  # generator step
-            return self.generator_step(x, x_prime)
+            return self.generator_step(x, x_prime, validate)
         elif step == "discriminator":
-            return self.discriminator_step(x, x_prime)
+            return self.discriminator_step(x, x_prime, validate)
 
         raise ValueError("step should be generator or discriminator"
                          ", received: " + str(step))
+    
+    def training_step(self, batch, step: str):
+        self.train()
+        return self.step(batch, step, False)
 
-    def validation_step(self, batch):
+    def validation_step(self, batch, step: str):
         self.eval()
-        loss = self.training_step(batch=batch, step="generator")
-
-        return loss
+        return self.step(batch, step, True)
 
     @torch.no_grad()
     def sample(self, batch):

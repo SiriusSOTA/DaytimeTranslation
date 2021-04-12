@@ -23,4 +23,7 @@ config = {
     "from_pretrained": True,
     "checkpoint_path": "notcheckpoints/step=30400.pt",
     "debug": True,
+    "test_size": 0.05,
+    "validate_period": 500,
+    "validate_start": 1000,
 }

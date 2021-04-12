@@ -29,6 +29,8 @@ class Trainer():
         self.val_loader = val_loader
         self.schedulers = scheduler
         self.global_step = 0
+        
+        print("Created model. Validate is", "on" if self.val_loader is not None else "off")
 
     def save_checkpoint(self,
                         checkpoint_path: Path,
@@ -62,14 +64,10 @@ class Trainer():
                 checkpoint[f"optimizer_{label}_state_dict"])
 
         self.global_step = checkpoint["global_step"] + 1
-
-    @torch.enable_grad()
-    def train_epoch(self) -> None:
-        self.model.train()
-
-        pbar = tqdm(self.train_loader, position=1, leave=False)
-
-        problems = dict()
+        
+    def setup_hooks(self, problems: dict):
+        if not self.config["debug"]:
+            return
 
         def hook_fn(layer, input, output):
             if isinstance(output, tuple):
@@ -80,7 +78,7 @@ class Trainer():
                     input = input[0]
                 input = input.detach().cpu()
                 problems[str(type(layer))] = {"input": input.numpy(),
-                                        "output": output.numpy()}
+                                              "output": output.numpy()}
 
         def backward_hook(layer, grad_input, grad_output):
             if isinstance(grad_input, tuple):
@@ -94,13 +92,50 @@ class Trainer():
                 problems[str(type(layer))] = {'grad_input': grad_input.numpy(),
                                               'grad_output': grad_output.numpy()}
 
-        if self.config["debug"]:
-            for name, layer in self.model._modules.items():
-                if isinstance(layer, nn.Sequential):
-                    pass
-                else:
-                    layer.register_backward_hook(backward_hook)
-                    layer.register_forward_hook(hook_fn)
+        for name, layer in self.model._modules.items():
+            if isinstance(layer, nn.Sequential):
+                pass
+            else:
+                layer.register_backward_hook(backward_hook)
+                layer.register_forward_hook(hook_fn)
+    
+    @torch.no_grad()
+    def validate(self):
+        if self.val_loader is None:
+            return
+        
+        if self.global_step < self.config["validate_start"]\
+           or self.global_step % self.config["validate_period"] != 0:
+            return
+        
+        val_info = defaultdict(float)
+        
+        for batch in self.val_loader:
+            current_iter_info = dict()
+            for opts in self.optimizers:
+
+                step = opts["label"]
+                optimizer = opts["value"]
+
+                info = self.model.validation_step(batch=batch,
+                                                  step=step)
+
+                current_iter_info = {**current_iter_info, **info}
+            
+            for key, value in current_iter_info.items():
+                val_info[key] += value
+
+        for key in val_info:
+            val_info[key] /= len(self.val_loader)
+
+        wandb.log(info)
+
+    @torch.enable_grad()
+    def train_epoch(self) -> None:
+        pbar = tqdm(self.train_loader, position=1, leave=False)
+
+        problems = dict()
+        self.setup_hooks(problems)
 
         for batch in pbar:
             current_iter_info = dict()
@@ -126,13 +161,20 @@ class Trainer():
 
                 prev_step = self.save_checkpoint(Path('/'), save=False)
                 current_iter_info = {**current_iter_info, **info}
-                loss = info[step]['loss']
+
+                if step == "generator":
+                    loss = info["train-gen: loss"]
+                else:
+                    loss = info["train-dis: loss"]
+
                 loss.backward()
                 utils.clip_grad_norm_(parameters=self.model.parameters(),
                                       max_norm=10)
 
                 optimizer.step()
                 optimizer.zero_grad()
+
+            self.validate()
 
             if self.global_step % self.config["picture_frequency"] == 0:
                 self._show_picture()
@@ -146,21 +188,13 @@ class Trainer():
             self.global_step += 1
 
     def _update_logs(self, info: dict, pbar: tqdm):
-        current = dict()
-        for key in info:
-            for inner_key in info[key]:
-                value = info[key][inner_key]
-                if isinstance(value, torch.Tensor):
-                    value = value.item()
-                current[key + "-" + inner_key] = value
-
-        pbar.set_postfix(current)
+        pbar.set_postfix(info)
 
         if self.global_step > self.config["send_wandb"]:
-            wandb.log(current)
+            wandb.log(info)
 
     def _show_picture(self):
-        batch = next(iter(self.train_loader))
+        batch = next(iter(self.val_loader))
         sample = self.model.sample(batch).cpu()
 
         images = (torchvision.utils.make_grid(sample,
