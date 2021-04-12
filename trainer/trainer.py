@@ -137,7 +137,7 @@ class Trainer():
 
         problems = dict()
         self.setup_hooks(problems)
-        prev_step = self.save_checkpoint(Path('/'), save=False)
+        prev_step = self.save_checkpoint(save=False)
 
         for batch in pbar:
             current_iter_info = dict()
