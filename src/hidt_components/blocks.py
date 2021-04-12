@@ -33,7 +33,7 @@ class ConvBlock(Module):
             norm: Optional[str] = None,
             pool: bool = False,
             act: bool = True,
-            padding_mode: str = "zeros"
+            padding_mode: str = "reflect"
     ):
         super().__init__()
         self.conv_block = None
@@ -118,7 +118,7 @@ class ResBlock(Module):
             kernel_size: int = 3,
             norm: Optional[str] = None,
             padding: int = 1,
-            padding_mode: str = "zeros"
+            padding_mode: str = "reflect"
     ):
         super().__init__()
         self.res_block = Sequential(

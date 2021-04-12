@@ -86,8 +86,8 @@ class Trainer():
                 grad_input = grad_input[0]
             if isinstance(grad_output, tuple):
                 grad_output = grad_output[0]
-            grad_input.detach().cpu()
-            grad_output.detach().cpu()
+            grad_input = grad_input.detach().cpu()
+            grad_output = grad_output.detach().cpu()
             if not grad_input.isfinite().all() or \
                     not grad_output.isfinite().all():
                 problems[str(type(layer))] = {'grad_input': grad_input.numpy(),
@@ -148,16 +148,19 @@ class Trainer():
 
                 info = self.model.training_step(batch=batch,
                                                 step=step)
+                if info.get('loss', 0) > 50:
+                    import pdb;
+                    pdb.set_trace()
                 if len(problems) > 0:
                     torch.save(prev_step,
                                Path(self.config['checkpoint_path'] + '_last'))
                     with open("logs.txt", 'w') as f:
                         for layer, values in problems.items():
-                            f.write(layer + '\n')
+                            f.write(" ".join(layer) + '\n')
                             f.write("input\n")
-                            f.write(values['input'])
+                            f.write(" ".join(values['input']))
                             f.write('output\n')
-                            f.write(values['output'])
+                            f.write(" ".join(values['output']))
                             f.write('\n\n\n')
                     import pdb;
                     pdb.set_trace()
