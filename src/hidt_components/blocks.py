@@ -1,4 +1,5 @@
 from collections import OrderedDict
+from typing import Optional
 
 import torch
 import torch.nn as nn
@@ -13,6 +14,7 @@ from torch.nn import (
     Module,
     LeakyReLU,
     Sequential,
+    LayerNorm,
 )
 
 
@@ -26,13 +28,42 @@ class ConvBlock(Module):
             padding: int = 1,
             bias: bool = True,
             transposed: bool = False,
-            norm: bool = False,
-            instance_norm: bool = False,
+            norm: Optional[str] = None,
             pool: bool = False,
             act: bool = True,
             padding_mode: str = "zeros"
     ):
         super().__init__()
+        self.conv_block = None
+        self.parameters = {
+            "in_channels": in_channels,
+            "out_channels": out_channels,
+            "kernel_size": kernel_size,
+            "stride": stride,
+            "padding": padding,
+            "bias": bias,
+            "transposed": transposed,
+            "norm": norm,
+            "pool": pool,
+            "act": act,
+            "padding_mode": padding_mode,
+        }
+        
+    def _init_block(
+        self,
+        input_shape,             
+        in_channels: int,
+        out_channels: int,
+        kernel_size: int = 3,
+        stride: int = 1,
+        padding: int = 1,
+        bias: bool = True,
+        transposed: bool = False,
+        norm: Optional[str] = None,
+        pool: bool = False,
+        act: bool = True,
+        padding_mode: str = "zeros"
+    ):
         block_ordered_dict = OrderedDict()
         block_ordered_dict['conv'] = Conv2d(
             in_channels=in_channels,
@@ -50,14 +81,19 @@ class ConvBlock(Module):
             padding=padding,
             bias=bias,
         )
-        if norm:
-            block_ordered_dict['norm'] = BatchNorm2d(num_features=out_channels)
-        if instance_norm:
-            block_ordered_dict['norm'] = InstanceNorm2d(
-                num_features=out_channels,
-                affine=True,
-                track_running_stats=True,
-            )
+
+        if norm is not None:
+            if norm == "batch":
+                block_ordered_dict['norm'] = BatchNorm2d(num_features=out_channels)
+            elif norm == "layer":
+                block_ordered_dict['norm'] = LayerNorm(input_shape)
+            elif norm == "instance":
+                block_ordered_dict['norm'] = InstanceNorm2d(
+                    num_features=out_channels,
+                    affine=True,
+                    track_running_stats=True,
+                )
+    
         if pool:
             block_ordered_dict['pool'] = MaxPool2d(kernel_size=2)
         if act:
@@ -65,6 +101,8 @@ class ConvBlock(Module):
         self.conv_block = Sequential(block_ordered_dict)
 
     def forward(self, x):
+        if self.conv_block is None:
+            self._init_block(x, **self.parameters)
         x = self.conv_block(x)
         return x
 
@@ -75,6 +113,7 @@ class ResBlock(Module):
             in_channels: int,
             out_channels: int,
             kernel_size: int = 3,
+            norm: Optional[str] = None,
             padding: int = 1,
             padding_mode: str = "zeros"
     ):
@@ -86,7 +125,7 @@ class ResBlock(Module):
                 kernel_size=kernel_size,
                 padding=padding,
                 bias=False,
-                instance_norm=True,
+                norm=norm,
                 padding_mode=padding_mode,
             ),
             ConvBlock(
@@ -95,7 +134,7 @@ class ResBlock(Module):
                 kernel_size=kernel_size,
                 padding=padding,
                 bias=False,
-                instance_norm=True,
+                norm=norm,
                 act=False,
                 padding_mode=padding_mode,
             ),
@@ -152,6 +191,7 @@ class AdaSkipBlock(Module):
         self.dense = ConvBlock(
             in_channels=in_channels * 2,
             out_channels=in_channels,
+            norm="batch",
         )
 
     def forward(self, content, style, hook):
@@ -175,10 +215,12 @@ class AdaResBlock(Module):
             ConvBlock(
                 in_channels=in_channels,
                 out_channels=out_channels,
+                norm="batch",
             ),
             ResBlock(
                 in_channels=out_channels,
                 out_channels=out_channels,
+                norm="batch",
             ),
         )
         if in_channels != out_channels:
@@ -186,6 +228,7 @@ class AdaResBlock(Module):
                 in_channels=in_channels,
                 out_channels=out_channels,
                 act=False,
+                norm="batch",
             )
         else:
             self.skip = Identity()

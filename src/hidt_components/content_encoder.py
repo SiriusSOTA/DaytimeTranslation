@@ -14,6 +14,7 @@ class ContentEncoder(Module):
             ResBlock(
                 in_channels=8,
                 out_channels=8,
+                norm="batch",
             )
         )
         self.conv_block_2 = ConvBlock(
@@ -24,6 +25,7 @@ class ContentEncoder(Module):
         self.res_block_3 = ResBlock(
             in_channels=16,
             out_channels=16,
+            norm="batch",
         )
         self.res_block_4 = Sequential(
             ConvBlock(
@@ -33,6 +35,7 @@ class ContentEncoder(Module):
             ResBlock(
                 in_channels=32,
                 out_channels=32,
+                norm="batch",
             ),
         )
         self.conv_block_5 = ConvBlock(
@@ -48,6 +51,7 @@ class ContentEncoder(Module):
             ResBlock(
                 in_channels=128,
                 out_channels=128,
+                norm="batch",
             ),
         )
         self.conv_block_7 = ConvBlock(

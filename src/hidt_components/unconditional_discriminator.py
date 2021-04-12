@@ -21,6 +21,7 @@ class UnconditionalDiscriminator(Module):
             ResBlock(
                 in_channels=64,
                 out_channels=64,
+                norm="layer",
             ),
             ConvBlock(
                 in_channels=64,
@@ -30,6 +31,7 @@ class UnconditionalDiscriminator(Module):
             ResBlock(
                 in_channels=128,
                 out_channels=128,
+                norm="layer",
             ),
             ConvBlock(
                 in_channels=128,
@@ -39,6 +41,7 @@ class UnconditionalDiscriminator(Module):
             ResBlock(
                 in_channels=64,
                 out_channels=64,
+                norm="layer",
             ),
             ConvBlock(
                 in_channels=64,

@@ -21,6 +21,7 @@ class ConditionalDiscriminator(Module):
             ResBlock(
                 num_feat,
                 num_feat,
+                norm="layer",
             ),
             ConvBlock(
                 num_feat,
@@ -30,6 +31,7 @@ class ConditionalDiscriminator(Module):
             ResBlock(
                 num_feat * (2 ** 1),
                 num_feat * (2 ** 1),
+                norm="layer",
             ),
             ConvBlock(
                 num_feat * (2 ** 1),
@@ -39,6 +41,7 @@ class ConditionalDiscriminator(Module):
             ResBlock(
                 num_feat * (2 ** 2),
                 num_feat * (2 ** 2),
+                norm="layer",
             ),
             ConvBlock(
                 num_feat * (2 ** 2),
@@ -48,6 +51,7 @@ class ConditionalDiscriminator(Module):
             ResBlock(
                 num_feat * (2 ** 3),
                 num_feat * (2 ** 3),
+                norm="layer",
             ),
             ConvBlock(
                 num_feat * (2 ** 3),
