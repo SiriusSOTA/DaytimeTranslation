@@ -138,7 +138,6 @@ class ResBlock(Module):
                 padding=padding,
                 bias=False,
                 norm=norm,
-                act=False,
                 padding_mode=padding_mode,
             ),
         )
@@ -230,7 +229,6 @@ class AdaResBlock(Module):
             self.skip = ConvBlock(
                 in_channels=in_channels,
                 out_channels=out_channels,
-                act=False,
                 norm="batch",
             )
         else:
