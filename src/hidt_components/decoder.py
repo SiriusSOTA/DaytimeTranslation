@@ -38,17 +38,12 @@ class Decoder(Module):
         )
 
     def forward(self, content, style, hooks):
-        print("content", content.shape, "style", style.shape)
         x = self.ada_res_block_1(content, style, content)
         x = self.ada_res_block_2(x, style, hooks[3])
-        print("before conv", x.shape)
         x = self.conv_block_3(x)
-        print("after conv", x.shape)
         x = self.ada_res_block_4(x, style, hooks[2])
         x = self.ada_res_block_5(x, style, hooks[1])
         x = self.conv_block_6(x)
-        print(x.shape)
         x = self.ada_res_block_7(x, style, hooks[0])
-        print(x.shape)
 
         return x, None
