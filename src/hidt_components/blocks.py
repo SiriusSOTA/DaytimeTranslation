@@ -149,12 +149,14 @@ class ResBlock(Module):
                 padding=padding,
                 bias=False,
                 norm=norm,
+                act=False,
                 padding_mode=padding_mode,
             ),
         )
+        self.activation = LeakyReLU()
 
     def forward(self, x):
-        x = x + self.res_block(x)
+        x = self.activation(x + self.res_block(x))
         return x
 
 
