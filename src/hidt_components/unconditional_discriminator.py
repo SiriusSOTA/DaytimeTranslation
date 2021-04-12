@@ -1,10 +1,9 @@
-import torch
 from torch.nn import (
-    Flatten,
-    Linear,
     Module,
     Sequential,
+    Conv2d,
 )
+from torch.nn.utils import spectral_norm
 
 from .blocks import ConvBlock, ResBlock
 
@@ -48,15 +47,17 @@ class UnconditionalDiscriminator(Module):
                 out_channels=32,
                 stride=2,
             ),
-            ConvBlock(
+            spectral_norm(Conv2d(
                 in_channels=32,
                 out_channels=1,
-            ),
-            Flatten(),
-            Linear(256, 1),
+                kernel_size=3,
+                stride=1,
+                padding=1,
+                padding_mode='reflect',
+            ))
         )
 
     def forward(self, image):
-        x = self.model(image)
+        x = self.model(image).squeeze(dim=1)
 
         return x

@@ -2,8 +2,9 @@ import torch
 from torch.nn import (
     Linear,
     Module,
-    ReLU,
+    LeakyReLU,
     Sequential,
+    Conv2d,
 )
 
 from .blocks import ConvBlock, ResBlock
@@ -15,8 +16,8 @@ class ConditionalDiscriminator(Module):
     def __init__(self, num_feat=64):
         super().__init__()
         self.num_feat = num_feat
-        self.activation = ReLU()
-        self.block_1 = ConvBlock(3, num_feat)
+        self.activation = LeakyReLU()
+        self.block_1 = ConvBlock(6, num_feat)
         self.blocks = Sequential(
             ResBlock(
                 num_feat,
@@ -60,29 +61,22 @@ class ConditionalDiscriminator(Module):
             ),
         )
 
-        self.l6 = torch.nn.utils.spectral_norm(
-            Linear(num_feat * 16, 1)
+        self.block_3 = torch.nn.utils.spectral_norm(
+            Conv2d(in_channels=num_feat * 16,
+                   out_channels=1,
+                   kernel_size=3,
+                   stride=1,
+                   padding=1,
+                   padding_mode='reflect')
         )
-        self.style = torch.nn.utils.spectral_norm(
-            Linear(3, num_feat * 16)
-        )
-        self._initialize()
 
-    def _initialize(self):
-        torch.nn.init.xavier_uniform_(self.l6.weight.data)
-        optional_l_y = getattr(self, 'l_y', None)
-        if optional_l_y is not None:
-            torch.nn.init.xavier_uniform_(optional_l_y.weight.data)
-
-    def forward(self, x, y=None):
+    def forward(self, x, y):
+        y = y.repeat_interleave(x.shape[2] * x.shape[3]).view([-1, 3, x.shape[2], x.shape[3]])
+        x = torch.cat([x, y], axis=1)
         x = self.block_1(x)
         x = self.blocks(x)
 
         h = self.activation(x)
-        h = torch.sum(h, dim=(2, 3))
-        output = self.l6(h)
-
-        if y is not None:
-            output += torch.sum(self.style(y) * h, dim=1, keepdim=True)
+        output = self.block_3(h).squeeze(dim=1)
 
         return output
