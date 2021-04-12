@@ -17,6 +17,8 @@ from torch.nn import (
     LayerNorm,
 )
 
+from config.hidt_config import config
+
 
 class ConvBlock(Module):
     def __init__(
@@ -48,21 +50,21 @@ class ConvBlock(Module):
             "act": act,
             "padding_mode": padding_mode,
         }
-        
+
     def _init_block(
-        self,
-        input_shape,             
-        in_channels: int,
-        out_channels: int,
-        kernel_size: int = 3,
-        stride: int = 1,
-        padding: int = 1,
-        bias: bool = True,
-        transposed: bool = False,
-        norm: Optional[str] = None,
-        pool: bool = False,
-        act: bool = True,
-        padding_mode: str = "zeros"
+            self,
+            input_shape,
+            in_channels: int,
+            out_channels: int,
+            kernel_size: int = 3,
+            stride: int = 1,
+            padding: int = 1,
+            bias: bool = True,
+            transposed: bool = False,
+            norm: Optional[str] = None,
+            pool: bool = False,
+            act: bool = True,
+            padding_mode: str = "zeros"
     ):
         block_ordered_dict = OrderedDict()
         block_ordered_dict['conv'] = Conv2d(
@@ -84,25 +86,26 @@ class ConvBlock(Module):
 
         if norm is not None:
             if norm == "batch":
-                block_ordered_dict['norm'] = BatchNorm2d(num_features=out_channels)
+                block_ordered_dict['norm'] = BatchNorm2d(
+                    num_features=out_channels)
             elif norm == "layer":
-                block_ordered_dict['norm'] = LayerNorm(input_shape)
+                block_ordered_dict['norm'] = LayerNorm(input_shape[1:])
             elif norm == "instance":
                 block_ordered_dict['norm'] = InstanceNorm2d(
                     num_features=out_channels,
                     affine=True,
                     track_running_stats=True,
                 )
-    
+
         if pool:
             block_ordered_dict['pool'] = MaxPool2d(kernel_size=2)
         if act:
             block_ordered_dict['act'] = LeakyReLU()
-        self.conv_block = Sequential(block_ordered_dict)
+        self.conv_block = Sequential(block_ordered_dict).to(config["device"])
 
     def forward(self, x):
         if self.conv_block is None:
-            self._init_block(x, **self.parameters)
+            self._init_block(x.size(), **self.parameters)
         x = self.conv_block(x)
         return x
 

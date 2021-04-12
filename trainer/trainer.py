@@ -29,8 +29,9 @@ class Trainer():
         self.val_loader = val_loader
         self.schedulers = scheduler
         self.global_step = 0
-        
-        print("Created model. Validate is", "on" if self.val_loader is not None else "off")
+
+        print("Created model. Validate is",
+              "on" if self.val_loader is not None else "off")
 
     def save_checkpoint(self,
                         checkpoint_path: Path,
@@ -64,7 +65,7 @@ class Trainer():
                 checkpoint[f"optimizer_{label}_state_dict"])
 
         self.global_step = checkpoint["global_step"] + 1
-        
+
     def setup_hooks(self, problems: dict):
         if not self.config["debug"]:
             return
@@ -98,37 +99,37 @@ class Trainer():
             else:
                 layer.register_backward_hook(backward_hook)
                 layer.register_forward_hook(hook_fn)
-    
+
     @torch.no_grad()
     def validate(self):
         if self.val_loader is None:
             return
-        
-        if self.global_step < self.config["validate_start"]\
-           or self.global_step % self.config["validate_period"] != 0:
+
+        if self.global_step < self.config["validate_start"] \
+                or self.global_step % self.config["validate_period"] != 0:
             return
-        
+
         val_info = defaultdict(float)
-        
+
         for batch in self.val_loader:
             current_iter_info = dict()
             for opts in self.optimizers:
-
                 step = opts["label"]
-                optimizer = opts["value"]
 
                 info = self.model.validation_step(batch=batch,
                                                   step=step)
 
                 current_iter_info = {**current_iter_info, **info}
-            
+
             for key, value in current_iter_info.items():
+                if isinstance(value, torch.Tensor):
+                    value = value.item()
                 val_info[key] += value
 
         for key in val_info:
             val_info[key] /= len(self.val_loader)
 
-        wandb.log(info)
+        wandb.log(val_info)
 
     @torch.enable_grad()
     def train_epoch(self) -> None:
@@ -136,6 +137,7 @@ class Trainer():
 
         problems = dict()
         self.setup_hooks(problems)
+        prev_step = self.save_checkpoint(Path('/'), save=False)
 
         for batch in pbar:
             current_iter_info = dict()
@@ -147,8 +149,9 @@ class Trainer():
                 info = self.model.training_step(batch=batch,
                                                 step=step)
                 if len(problems) > 0:
-                    torch.save(prev_step, Path(self.config['checkpoint_path'] + '_last'))
-                    with open ("logs.txt", 'w') as f:
+                    torch.save(prev_step,
+                               Path(self.config['checkpoint_path'] + '_last'))
+                    with open("logs.txt", 'w') as f:
                         for layer, values in problems.items():
                             f.write(layer + '\n')
                             f.write("input\n")
@@ -188,7 +191,13 @@ class Trainer():
             self.global_step += 1
 
     def _update_logs(self, info: dict, pbar: tqdm):
-        pbar.set_postfix(info)
+        info_values = dict()
+        for key, value in info.items():
+            if isinstance(value, torch.Tensor):
+                value = value.item()
+            info_values[key] = value
+
+        pbar.set_postfix(info_values)
 
         if self.global_step > self.config["send_wandb"]:
             wandb.log(info)

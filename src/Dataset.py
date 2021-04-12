@@ -16,7 +16,6 @@ from albumentations.pytorch import ToTensorV2
 from torch import Tensor
 from torch.utils.data import Dataset, random_split
 
-
 new_size = 256
 
 
@@ -34,8 +33,10 @@ class LandscapesDataset(Dataset):
                 HorizontalFlip(),
                 ToTensorV2(),
             ],
-        ):
-        self.filenames = list(str(p) for p in data_path.glob('**/*.jpg')) + list(str(p) for p in data_path.glob('**/*.png'))
+    ):
+        self.filenames = list(
+            str(p) for p in data_path.glob('**/*.jpg')) + list(
+            str(p) for p in data_path.glob('**/*.png'))
         self.transform = Compose(transform)
 
     def __len__(self):
@@ -44,7 +45,7 @@ class LandscapesDataset(Dataset):
     def __getitem__(
             self,
             idx,
-        ):
+    ):
         filename = self.filenames[idx]
         image = cv2.imread(filename)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -65,5 +66,5 @@ class LandscapesDataset(Dataset):
 def train_test_split(dataset: Dataset, test_size=0.2):
     test_size = int(len(dataset) * test_size)
     train_size = len(dataset) - test_size
-    
+
     return random_split(dataset, [train_size, test_size])

@@ -8,16 +8,18 @@ Lambdas order:
 6. loss_dist
 """
 
+PROFILE = "BULAT"  # NASTIA, SAIDASH, SPHERE
+
 config = {
     "learning_rate": 3e-4,
     "lambdas": [5, 2, 1, 0.1, 4, 1],
     "n_epochs": 100,
-    "batch_size": 4,
+    "batch_size": 2,
     "num_workers": 0,
     "save_period": 800,
     "log_frequency": 100,
     "picture_frequency": 100,
-    "device": 'cuda:0',
+    "device": 'cuda:1',
     "data_path": "data/images",
     "send_wandb": 150,
     "from_pretrained": False,
@@ -27,3 +29,14 @@ config = {
     "validate_period": 500,
     "validate_start": 1000,
 }
+
+if PROFILE == "BULAT":
+    config["data_path"] = "/data/bvshelhonov/images"
+elif PROFILE == "NASTIA":
+    raise NotImplementedError()
+elif PROFILE == "SAIDASH":
+    raise NotImplementedError()
+elif PROFILE == "SPHERE":
+    raise NotImplementedError()
+else:
+    raise ValueError("Invalid profile")

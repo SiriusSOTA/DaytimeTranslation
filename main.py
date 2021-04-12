@@ -1,11 +1,9 @@
 import torch
-from torch.utils.data import DataLoader
-import os
 from pathlib import Path
-from random import randint
-from typing import List
 
-from src.Dataset import LandscapesDataset
+from torch.utils.data import DataLoader
+
+from src.Dataset import LandscapesDataset, train_test_split
 from src.hidt_model import HiDTModel
 from trainer.trainer import Trainer
 from config.hidt_config import config
