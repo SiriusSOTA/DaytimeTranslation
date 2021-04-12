@@ -16,8 +16,16 @@ from torch.nn import (
     Sequential,
     LayerNorm,
 )
+import torch.nn.functional as F
 
 from config.hidt_config import config
+
+
+class BilinearInterpolation(nn.Module):
+    def forward(self, x):
+        x = F.interpolate(x, scale_factor=2, mode='bilinear',
+                          align_corners=True, recompute_scale_factor=True)
+        return x
 
 
 class ConvBlock(Module):
@@ -75,13 +83,16 @@ class ConvBlock(Module):
             padding=padding,
             bias=bias,
             padding_mode=padding_mode,
-        ) if not transposed else ConvTranspose2d(  # TODO: bilinear?
-            in_channels=in_channels,
-            out_channels=out_channels,
-            kernel_size=kernel_size,
-            stride=stride,
-            padding=padding,
-            bias=bias,
+        ) if not transposed else Sequential(
+            BilinearInterpolation(),
+            Conv2d(
+                in_channels=in_channels,
+                out_channels=out_channels,
+                kernel_size=kernel_size,
+                padding=padding,
+                bias=bias,
+                padding_mode=padding_mode,
+            )
         )
 
         if norm is not None:
