@@ -32,15 +32,15 @@ class HiDTModel(nn.Module):
         self.uncond_discriminator = UnconditionalDiscriminator()
 
         self.criterion_dist = MetricCalculator.criterion_dist
-        self.criterion_rec = nn.L1Loss()
+        self.criterion_rec = nn.SmoothL1Loss(beta=1e-2)
         self.criterion_seg = nn.CrossEntropyLoss()
-        self.criterion_c = nn.L1Loss()
-        self.criterion_s = nn.L1Loss()
-        self.criterion_cyc = nn.L1Loss()
+        self.criterion_c = nn.SmoothL1Loss(beta=1e-2)
+        self.criterion_s = nn.SmoothL1Loss(beta=1e-2)
+        self.criterion_cyc = nn.SmoothL1Loss(beta=1e-2)
         self.criterion_seg_r = nn.CrossEntropyLoss()
-        self.criterion_c_r = nn.L1Loss()
-        self.criterion_s_r = nn.L1Loss()
-        self.criterion_rec_r = nn.L1Loss()
+        self.criterion_c_r = nn.SmoothL1Loss(beta=1e-2)
+        self.criterion_s_r = nn.SmoothL1Loss(beta=1e-2)
+        self.criterion_rec_r = nn.SmoothL1Loss(beta=1e-2)
 
         self.lambdas = config["lambdas"]
 
@@ -276,14 +276,14 @@ class HiDTModel(nn.Module):
 
         optimizer_g = optim.Adam(
             params=params_g,
-            lr=self.config["learning_rate"],
+            lr=self.config["gen_learning_rate"],
         )
         params_d = list(self.cond_discriminator.parameters()) + \
                    list(self.uncond_discriminator.parameters())
 
         optimizer_d = optim.Adam(
             params=params_d,
-            lr=self.config["learning_rate"],
+            lr=self.config["dis_learning_rate"],
         )
 
         optimizers = [
