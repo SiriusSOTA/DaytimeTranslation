@@ -11,7 +11,8 @@ Lambdas order:
 PROFILE = "BULAT"  # NASTIA, SAIDASH, SPHERE
 
 config = {
-    "learning_rate": 3e-4,
+    "gen_learning_rate": 5e-5,
+    "dis_learning_rate": 1e-4,
     "lambdas": [5, 2, 1, 0.1, 4, 1],
     "n_epochs": 100,
     "batch_size": 2,
@@ -40,9 +41,10 @@ elif PROFILE == "NASTIA":
     config["save_checkpoint_path"] = "notcheckpoints/"
     raise NotImplementedError()
 elif PROFILE == "SAIDASH":
-    config["data_path"] = "/data/bvshelhonov/images"
-    config["save_checkpoint_path"] = "notcheckpoints/"
-    raise NotImplementedError()
+    config["data_path"] = "/data/smmiftahov/images"
+    config['from_pretrained'] = False
+    config['checkpoint_path'] = '/data/smmiftahov/notcheckpoints/step=40000.pt'
+    config["save_checkpoint_path"] = "/data/smmiftahov/notcheckpoints/"
 elif PROFILE == "SPHERE":
     config["data_path"] = "/data/bvshelhonov/images"
     config["save_checkpoint_path"] = "notcheckpoints/"
