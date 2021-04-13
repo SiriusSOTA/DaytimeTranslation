@@ -24,9 +24,12 @@ class ContentEncoder(Module):
                                       norm="batch",
                                       stride=2)
         self.act_4 = LeakyReLU()
-        self.res_block_5 = ResBlock(in_channels=64,
-                                    out_channels=128,
-                                    norm="batch")
+        self.conv_block_5 = Sequential(ConvBlock(in_channels=64,
+                                                 out_channels=128,
+                                                 norm="batch"),
+                                       ResBlock(in_channels=128,
+                                                out_channels=128,
+                                                norm="batch"))
         self.act_5 = Tanh()
 
     def forward(self, image):
@@ -40,5 +43,5 @@ class ContentEncoder(Module):
         hooks.append(x)
         x = self.act_4(self.conv_block_4(x))
         hooks.append(x)
-        x = self.act_5(self.res_block_5(x))
+        x = self.act_5(self.conv_block_5(x))
         return x, hooks
