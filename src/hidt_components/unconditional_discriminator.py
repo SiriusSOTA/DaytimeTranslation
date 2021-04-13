@@ -61,7 +61,7 @@ class UnconditionalDiscriminator(Module):
                 kernel_size=3,
                 stride=1,
                 padding=1,
-                padding_mode='refle ct',
+                padding_mode='reflect',
             )),
         )
 

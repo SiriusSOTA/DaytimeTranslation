@@ -21,11 +21,14 @@ def main():
     train_loader = DataLoader(dataset=train_dataset,
                               batch_size=config["batch_size"],
                               num_workers=config["num_workers"],
-                              drop_last=True)
+                              drop_last=True,
+                              shuffle=True,
+                              pin_memory=True)
     val_loader = DataLoader(dataset=val_dataset,
                             batch_size=config["batch_size"],
                             num_workers=config["num_workers"],
-                            drop_last=True)
+                            drop_last=True,
+                            pin_memory=True)
     trainer = Trainer(model=model,
                       config=config,
                       train_loader=train_loader,
