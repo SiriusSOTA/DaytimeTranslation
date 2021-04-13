@@ -36,9 +36,9 @@ class ContentEncoder(Module):
         hooks.append(x)
         x = self.act_2(self.conv_block_2(x))
         hooks.append(x)
-        x = self.act_3(self.conv_block_4(x))
+        x = self.act_3(self.conv_block_3(x))
         hooks.append(x)
-        x = self.act_4(self.conv_block_5(x))
+        x = self.act_4(self.conv_block_4(x))
         hooks.append(x)
-        x = self.act_5(self.conv_block_6(x))
+        x = self.act_5(self.res_block_5(x))
         return x, hooks
