@@ -6,15 +6,14 @@ import torch.nn as nn
 from torch.nn import (
     BatchNorm2d,
     Conv2d,
-    ConvTranspose2d,
     Identity,
     InstanceNorm2d,
     Linear,
     MaxPool2d,
     Module,
-    LeakyReLU,
     Sequential,
     LayerNorm,
+    LeakyReLU,
 )
 import torch.nn.functional as F
 
@@ -40,8 +39,7 @@ class ConvBlock(Module):
             transposed: bool = False,
             norm: Optional[str] = None,
             pool: bool = False,
-            act: bool = True,
-            padding_mode: str = "reflect"
+            padding_mode: str = "reflect",
     ):
         super().__init__()
         self.conv_block = None
@@ -55,7 +53,6 @@ class ConvBlock(Module):
             "transposed": transposed,
             "norm": norm,
             "pool": pool,
-            "act": act,
             "padding_mode": padding_mode,
         }
 
@@ -71,11 +68,10 @@ class ConvBlock(Module):
             transposed: bool = False,
             norm: Optional[str] = None,
             pool: bool = False,
-            act: bool = True,
             padding_mode: str = "reflect"
     ):
         block_ordered_dict = OrderedDict()
-        block_ordered_dict['conv'] = Conv2d(
+        block_ordered_dict["conv"] = Conv2d(
             in_channels=in_channels,
             out_channels=out_channels,
             kernel_size=kernel_size,
@@ -110,8 +106,6 @@ class ConvBlock(Module):
 
         if pool:
             block_ordered_dict['pool'] = MaxPool2d(kernel_size=2)
-        if act:
-            block_ordered_dict['act'] = LeakyReLU()
         self.conv_block = Sequential(block_ordered_dict).to(config["device"])
 
     def forward(self, x):
@@ -129,7 +123,7 @@ class ResBlock(Module):
             kernel_size: int = 3,
             norm: Optional[str] = None,
             padding: int = 1,
-            padding_mode: str = "reflect"
+            padding_mode: str = "reflect",
     ):
         super().__init__()
         self.res_block = Sequential(
@@ -142,6 +136,7 @@ class ResBlock(Module):
                 norm=norm,
                 padding_mode=padding_mode,
             ),
+            LeakyReLU(),
             ConvBlock(
                 in_channels=out_channels,
                 out_channels=out_channels,
@@ -149,14 +144,12 @@ class ResBlock(Module):
                 padding=padding,
                 bias=False,
                 norm=norm,
-                act=False,
                 padding_mode=padding_mode,
             ),
         )
-        self.activation = LeakyReLU()
 
     def forward(self, x):
-        x = self.activation(x + self.res_block(x))
+        x = x + self.res_block(x)
         return x
 
 
@@ -181,26 +174,13 @@ def AdaIN(content_feat, style_feat):
 
 
 class AdaSkipBlock(Module):
-    def __init__(
-            self,
-            in_channels,
-            out_channels,
-    ):
+    def __init__(self, in_channels: int, out_channels: int):
         super().__init__()
         self.in_channels = in_channels
         self.ada_creator = nn.Sequential(
-            Linear(
-                in_features=3,
-                out_features=16,
-            ),
-            Linear(
-                in_features=16,
-                out_features=64,
-            ),
-            Linear(
-                in_features=64,
-                out_features=256,
-            ),
+            Linear(in_features=3, out_features=16),
+            Linear(in_features=16, out_features=64),
+            Linear(in_features=64, out_features=256),
         )
         self.ada = AdaIN
         self.dense = ConvBlock(
@@ -226,12 +206,14 @@ class AdaResBlock(Module):
             in_channels=in_channels,
             out_channels=in_channels,
         )
+        self.act_1 = LeakyReLU() # TODO find out why cant be inplace=True
         self.res_block = Sequential(
             ConvBlock(
                 in_channels=in_channels,
                 out_channels=out_channels,
                 norm="batch",
             ),
+            LeakyReLU(), # TODO find out why cant be inplace=True
             ResBlock(
                 in_channels=out_channels,
                 out_channels=out_channels,
@@ -248,7 +230,7 @@ class AdaResBlock(Module):
             self.skip = Identity()
 
     def forward(self, content, style, hook):
-        ada = self.ada_block(content, style, hook)
+        ada = self.act_1(self.ada_block(content, style, hook))
         res = self.res_block(ada)
 
         if self.skip is not None:

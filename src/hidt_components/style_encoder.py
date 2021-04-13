@@ -1,9 +1,10 @@
-import torch
 from einops.layers.torch import Rearrange
 from torch.nn import (
     AdaptiveAvgPool2d,
     Module,
     Sequential,
+    LeakyReLU,
+    Tanh,
 )
 
 from .blocks import ConvBlock
@@ -19,26 +20,31 @@ class StyleEncoder(Module):
                 stride=2,
                 norm="batch",
             ),
+            LeakyReLU(),
             ConvBlock(
                 in_channels=8,
                 out_channels=16,
                 stride=2,
                 norm="batch",
             ),
+            LeakyReLU(),
             ConvBlock(
                 in_channels=16,
                 out_channels=32,
                 stride=2,
                 norm="batch",
             ),
+            LeakyReLU(),
             ConvBlock(
                 in_channels=32,
                 out_channels=3,
                 stride=2,
                 norm="batch",
             ),
+            LeakyReLU(),
             AdaptiveAvgPool2d(output_size=1),
             Rearrange('b c 1 1 -> b c'),
+            Tanh(),
         )
 
     def forward(self, image):

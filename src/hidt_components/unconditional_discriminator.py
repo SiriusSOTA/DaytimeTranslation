@@ -2,6 +2,8 @@ from torch.nn import (
     Module,
     Sequential,
     Conv2d,
+    LeakyReLU,
+    Tanh,
 )
 from torch.nn.utils import spectral_norm
 
@@ -17,26 +19,31 @@ class UnconditionalDiscriminator(Module):
                 out_channels=64,
                 stride=2,
             ),
+            LeakyReLU(),
             ResBlock(
                 in_channels=64,
                 out_channels=64,
                 norm="layer",
             ),
+            LeakyReLU(),
             ConvBlock(
                 in_channels=64,
                 out_channels=128,
                 stride=2,
             ),
+            LeakyReLU(),
             ResBlock(
                 in_channels=128,
                 out_channels=128,
                 norm="layer",
             ),
+            LeakyReLU(),
             ConvBlock(
                 in_channels=128,
                 out_channels=64,
                 stride=2,
             ),
+            LeakyReLU(),
             ResBlock(
                 in_channels=64,
                 out_channels=64,
@@ -47,6 +54,7 @@ class UnconditionalDiscriminator(Module):
                 out_channels=32,
                 stride=2,
             ),
+            LeakyReLU(),
             spectral_norm(Conv2d(
                 in_channels=32,
                 out_channels=1,
@@ -54,7 +62,8 @@ class UnconditionalDiscriminator(Module):
                 stride=1,
                 padding=1,
                 padding_mode='reflect',
-            ))
+            )),
+            Tanh(),
         )
 
     def forward(self, image):

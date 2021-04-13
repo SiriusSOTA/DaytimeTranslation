@@ -19,7 +19,7 @@ config = {
     "save_period": 800,
     "log_frequency": 100,
     "picture_frequency": 100,
-    "device": 'cuda:1',
+    "device": 'cuda:4',
     "data_path": "data/images",
     "send_wandb": 150,
     "from_pretrained": False,
