@@ -77,7 +77,6 @@ class ConditionalDiscriminator(Module):
                    padding=1,
                    padding_mode='reflect')
         )
-        self.act_2 = Tanh()
 
     def forward(self, x, y):
         y = y.repeat_interleave(x.shape[2] * x.shape[3]).view(
@@ -86,6 +85,6 @@ class ConditionalDiscriminator(Module):
         x = self.blocks(x)
 
         h = self.act_1(x)
-        output = self.act_2(self.block_3(h).squeeze(dim=1))
+        output = self.block_3(h).squeeze(dim=1)
 
         return output

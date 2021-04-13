@@ -61,9 +61,8 @@ class UnconditionalDiscriminator(Module):
                 kernel_size=3,
                 stride=1,
                 padding=1,
-                padding_mode='reflect',
+                padding_mode='refle ct',
             )),
-            Tanh(),
         )
 
     def forward(self, image):
