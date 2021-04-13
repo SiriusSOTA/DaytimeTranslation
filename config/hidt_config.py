@@ -29,6 +29,7 @@ config = {
     "test_size": 0.05,
     "validate_period": 500,
     "validate_start": 1000,
+    "size": 128,
 }
 
 if PROFILE == "BULAT":

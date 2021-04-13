@@ -2,7 +2,6 @@ from pathlib import Path
 from random import choice
 from typing import List
 
-import matplotlib.pyplot as plt
 import cv2
 from albumentations import (
     Compose,
@@ -11,12 +10,12 @@ from albumentations import (
     SmallestMaxSize,
     CenterCrop
 )
-
 from albumentations.pytorch import ToTensorV2
-from torch import Tensor
 from torch.utils.data import Dataset, random_split
 
-new_size = 256
+from config.hidt_config import config
+
+new_size = config["size"]
 
 
 class LandscapesDataset(Dataset):
@@ -35,30 +34,27 @@ class LandscapesDataset(Dataset):
             ],
     ):
         self.filenames = list(
-            str(p) for p in data_path.glob('**/*.jpg')) + list(
-            str(p) for p in data_path.glob('**/*.png'))
+            str(p) for p in data_path.glob("**/*.jpg")) + list(
+            str(p) for p in data_path.glob("**/*.png"))
         self.transform = Compose(transform)
 
     def __len__(self):
         return len(self.filenames)
 
-    def __getitem__(
-            self,
-            idx,
-    ):
+    def __getitem__(self, idx):
         filename = self.filenames[idx]
         image = cv2.imread(filename)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         if self.transform:
-            image = self.transform(image=image)['image']
+            image = self.transform(image=image)["image"]
 
         random_filename = choice(self.filenames)
         random_image = cv2.imread(random_filename)
         random_image = cv2.cvtColor(random_image, cv2.COLOR_BGR2RGB)
 
         if self.transform:
-            random_image = self.transform(image=random_image)['image']
+            random_image = self.transform(image=random_image)["image"]
 
         return image, random_image
 
