@@ -155,31 +155,32 @@ class HiDTModel(nn.Module):
                            x_prime: torch.Tensor,
                            validate: bool,
                            ):
-        c, h = self.content_encoder(x)
-        s = self.style_encoder(x)
-        x_tilde, m = self.generator(c, s, h)
+        with torch.no_grad():
+            c, h = self.content_encoder(x)
+            s = self.style_encoder(x)
+            x_tilde, m = self.generator(c, s, h)
 
-        # swapping branch
-        s_prime = self.style_encoder(x_prime)
-        x_hat, m_hat = self.generator(c, s_prime, h)
+            # swapping branch
+            s_prime = self.style_encoder(x_prime)
+            x_hat, m_hat = self.generator(c, s_prime, h)
 
-        c_hat, h_hat = self.content_encoder(x_hat)
-        s_hat = self.style_encoder(x_hat)
+            c_hat, h_hat = self.content_encoder(x_hat)
+            s_hat = self.style_encoder(x_hat)
 
-        c_prime, h_prime = self.content_encoder(x_prime)
-        x_prime_hat, _ = self.generator(c_prime, s,
-                                        h_prime)
-        s_prime_hat = self.style_encoder(x_prime_hat)
-        x_hat_tilde, _ = self.generator(c_hat, s_prime_hat,
-                                        h_hat)
+            c_prime, h_prime = self.content_encoder(x_prime)
+            x_prime_hat, _ = self.generator(c_prime, s,
+                                            h_prime)
+            s_prime_hat = self.style_encoder(x_prime_hat)
+            x_hat_tilde, _ = self.generator(c_hat, s_prime_hat,
+                                            h_hat)
 
-        # noise branch
-        s_r = torch.randn(len(x), 3).to(self.device)
-        x_r, m_r = self.generator(c, s_r, h)
-        c_r_tilde, h_r_tilde, = self.content_encoder(x_r)
-        s_r_tilde = self.style_encoder(x_r)
-        x_r_tilde, _ = self.generator(c_r_tilde, s_r_tilde,
-                                      h_r_tilde)
+            # noise branch
+            s_r = torch.randn(len(x), 3).to(self.device)
+            x_r, m_r = self.generator(c, s_r, h)
+            c_r_tilde, h_r_tilde, = self.content_encoder(x_r)
+            s_r_tilde = self.style_encoder(x_r)
+            x_r_tilde, _ = self.generator(c_r_tilde, s_r_tilde,
+                                          h_r_tilde)
 
         # all discriminators
         du_x_hat = self.uncond_discriminator(x_hat)
