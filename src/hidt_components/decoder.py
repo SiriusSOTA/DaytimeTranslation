@@ -1,63 +1,183 @@
-from torch.nn import Module, LeakyReLU, Tanh
+import torch
+from torch.nn import ModuleList, Upsample, Sequential
 
-from .blocks import AdaResBlock, ConvBlock
+from .blocks import Conv2dBlock, ResBlocks, LinearBlock
+from .utils import module_list_forward
 
 
-class Decoder(Module):
-    def __init__(self):
+class MLP(nn.Module):
+    def __init__(self, input_dim, output_dim, dim, num_blocks, norm='none', activ='relu'):
+        super(MLP, self).__init__()
+        self.model = []
+        self.model += [LinearBlock(input_dim, dim, norm=norm, activation=activ)]
+        for i in range(num_blocks - 2):
+            self.model += [LinearBlock(dim, dim, norm=norm, activation=activ)]
+        self.model += [LinearBlock(dim, output_dim, norm='none', activation='none')]  # no output activations
+        self.model = Sequential(*self.model)
+
+    def forward(self, x):
+        return self.model(x.view(x.size(0), -1))
+
+
+class DecoderBase(nn.Module):
+    def __init__(self, **kwargs):
         super().__init__()
-        self.ada_res_block_1 = AdaResBlock(
-            in_channels=128,
-            out_channels=64,
-        )
-        self.act_1 = LeakyReLU()
-        self.ada_res_block_2 = AdaResBlock(
-            in_channels=64,
-            out_channels=32,
-        )
-        self.act_2 = LeakyReLU()
-        self.conv_block_3 = ConvBlock(
-            in_channels=32,
-            out_channels=32,
-            transposed=True,
-        )
-        self.act_3 = LeakyReLU()
-        self.ada_res_block_4 = AdaResBlock(
-            in_channels=32,
-            out_channels=16,
-        )
-        self.act_4 = LeakyReLU()
-        self.ada_res_block_5 = AdaResBlock(
-            in_channels=16,
-            out_channels=8,
-        )
-        self.act_5 = LeakyReLU()
-        self.conv_block_6 = ConvBlock(
-            in_channels=8,
-            out_channels=8,
-            transposed=True,
-        )
-        self.act_6 = LeakyReLU()
-        self.ada_res_block_7 = AdaResBlock(
-            in_channels=8,
-            out_channels=3,
-        )
-        self.act_7 = Tanh()
 
-    def forward(self, content, style, hooks):
-        x = self.ada_res_block_1(content, style, content)
-        x = self.act_1(x)
-        x = self.ada_res_block_2(x, style, hooks[3])
-        x = self.act_2(x)
-        x = self.conv_block_3(x)
-        x = self.act_3(x)
-        x = self.ada_res_block_4(x, style, hooks[2])
-        x = self.act_4(x)
-        x = self.ada_res_block_5(x, style, hooks[1])
-        x = self.act_5(x)
-        x = self.conv_block_6(x)
-        x = self.act_6(x)
-        x = self.ada_res_block_7(x, style, hooks[0])
-        x = self.act_7(x)
+        self.body = ModuleList()
+        self.upsample_head = ModuleList()
 
-        return x, None
+        self._init_modules(**kwargs)
+
+    def _init_modules(self, **kwargs):
+        raise NotImplementedError
+
+    def forward(self, tensor, spade_input=None):
+        tensor = module_list_forward(self.body, tensor, spade_input)
+
+        for layer in self.upsample_head:
+            tensor = layer(tensor)
+
+        return tensor
+
+
+class DecoderAdaINBase(DecoderBase):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        num_adain_params = self._calc_adain_params()
+        self.output_dim = num_adain_params
+        self.adain_net = MLP()
+        self.style_dim = 3
+        self.pred_adain_params = True
+
+    def _calc_adain_params(self):
+        return self.get_num_adain_params(self)
+
+    @staticmethod
+    def get_num_adain_params(model):
+        # return the number of AdaIN parameters needed by the model
+        num_adain_params = 0
+        for m in model.modules():
+            if m.__class__.__name__ in ("AdaptiveInstanceNorm2d", 'AdaLIN'):
+                num_adain_params += 2 * m.num_features
+        return num_adain_params
+
+    @staticmethod
+    def assign_adain_params(adain_params, model):
+        # assign the adain_params to the AdaIN layers in model
+        for m in model.modules():
+            if m.__class__.__name__ in ('AdaptiveInstanceNorm2d', 'AdaLIN'):
+                assert adain_params.shape[1]
+                mean = adain_params[:, :m.num_features]
+                assert mean.shape[1]
+                std = adain_params[:, m.num_features:2 * m.num_features]
+                assert std.shape[1]
+                m.bias = mean.contiguous().view(-1)
+                m.weight = std.contiguous().view(-1)
+                if adain_params.size(1) >= 2 * m.num_features:
+                    adain_params = adain_params[:, 2 * m.num_features:]
+
+    def forward(self, content_tensor, style_tensor, spade_input=None):
+        if self.pred_adain_params:
+            adain_params = self.adain_net(style_tensor)
+            self.assign_adain_params(adain_params, self)
+        return super().forward(content_tensor, spade_input)
+
+
+class DecoderAdaINConvBase(DecoderAdaINBase):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.pred_conv_kernel = True
+
+    @staticmethod
+    def assign_style(style, model):
+        # assign a style to the Conv2dBlocks
+        for m in model.modules():
+            if m.__class__.__name__ == "Conv2dBlock":
+                m.style = style
+
+    def forward(self, content_tensor, style_tensor, spade_input=None):
+        if self.pred_conv_kernel:
+            assert style_tensor.size(0) == 1, 'prediction of convilution does not work with batch size > 1'
+            self.assign_style(style_tensor.view(1, -1), self)
+        return super().forward(content_tensor, style_tensor, spade_input)
+
+
+class DecoderUnet(DecoderAdaINConvBase):
+    def _init_modules(self, **kwargs):
+        self.num_upsamples = kwargs['num_upsamples']
+        self.body += [ResBlocks(kwargs['num_blocks'],
+                                kwargs['dim'],
+                                norm=kwargs['res_norm'],
+                                activation=kwargs['activ'],
+                                pad_type=kwargs['pad_type'],
+                                style_dim=kwargs.get('style_dim', 3))]
+
+        self.upsample_postprocess = ModuleList()
+        self.skip_preprocess = ModuleList()
+
+        dim = kwargs['dim']
+        skip_dim = kwargs['skip_dim']
+        if isinstance(skip_dim, int):
+            skip_dim = [skip_dim] * kwargs['num_upsamples']
+        skip_dim = skip_dim[::-1]
+
+        for i in range(kwargs['num_upsamples']):
+            self.upsample_head += [Upsample(scale_factor=2)]
+            current_upsample_postprocess = [
+                Conv2dBlock(dim + skip_dim[i],
+                            dim // 2, 7, 1, 3,
+                            norm=kwargs['up_norm'],
+                            activation=kwargs['activ'],
+                            pad_type=kwargs['pad_type'],
+                            style_dim=kwargs.get('style_dim', 3),
+                            norm_after_conv=kwargs.get('norm_after_conv', 'ln'),
+                            )]
+            if kwargs['num_res_conv']:
+                current_upsample_postprocess += [ResBlocks(kwargs['num_res_conv'],
+                                                           dim // 2,
+                                                           norm=kwargs['up_norm'],
+                                                           activation=kwargs['activ'],
+                                                           pad_type=kwargs['pad_type'],
+                                                           style_dim=kwargs.get('style_dim', 3),
+                                                           norm_after_conv=kwargs.get('norm_after_conv', 'ln'),
+                                                           )]
+
+            current_skip_preprocess = [Conv2dBlock(skip_dim[i],
+                                                   skip_dim[i], 7, 1, 3,
+                                                   norm=kwargs['res_norm'],
+                                                   activation=kwargs['activ'],
+                                                   pad_type=kwargs['pad_type'],
+                                                   style_dim=kwargs.get('style_dim', 3),
+                                                   norm_after_conv=kwargs.get('norm_after_conv', 'ln'),
+                                                   )]
+
+            self.upsample_postprocess += [Sequential(*current_upsample_postprocess)]
+            self.skip_preprocess += [Sequential(*current_skip_preprocess)]
+            dim //= 2
+
+        # use reflection padding in the last conv layer
+        self.model_postprocess = ModuleList([Conv2dBlock(dim, self.output_dim, 9, 1, 4,
+                                                            norm='none',
+                                                            activation='none',
+                                                            pad_type=kwargs['pad_type'])])
+
+    def forward(self, content_list, style_tensor, spade_input=None, pure_generation=False):
+        if self.pred_adain_params:
+            adain_params = self.adain_net(style_tensor)
+            self.assign_adain_params(adain_params, self)
+
+        if self.pred_conv_kernel:
+            assert style_tensor.size(0) == 1, 'prediction of convilution does not work with batch size > 1'
+            self.assign_style(style_tensor.view(1, -1), self)
+
+        tensor = module_list_forward(self.body, content_list[0], spade_input)
+        for skip_content, up_layer, up_postprocess_layer, skip_preprocess_layer in zip(content_list[1:],
+                                                                                       self.upsample_head,
+                                                                                       self.upsample_postprocess,
+                                                                                       self.skip_preprocess):
+            tensor = up_layer(tensor)
+            skip_tensor = skip_preprocess_layer(skip_content)
+            tensor = torch.cat([tensor, skip_tensor], 1)
+            tensor = up_postprocess_layer(tensor)
+        tensor = module_list_forward(self.model_postprocess, tensor, spade_input)
+        return tensor

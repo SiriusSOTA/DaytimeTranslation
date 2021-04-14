@@ -1,47 +1,64 @@
+from itertools import chain
+from typing import List
 from torch.nn import Module, Sequential, LeakyReLU, Tanh
 
-from .blocks import ConvBlock, ResBlock
+from .blocks import ConvBlock, ResBlock, Conv2dBlock
 
 
-class ContentEncoder(Module):
-    def __init__(self):
+class ContentEncoderBase(Module):
+    def __init__(self, dim):
         super().__init__()
-        self.conv_block_1 = ConvBlock(in_channels=3,
-                                      out_channels=8,
-                                      norm="batch")
-        self.act_1 = LeakyReLU()
-        self.conv_block_2 = ConvBlock(in_channels=8,
-                                      out_channels=16,
-                                      norm="batch",
-                                      stride=2)
-        self.act_2 = LeakyReLU()
-        self.conv_block_3 = ConvBlock(in_channels=16,
-                                      out_channels=32,
-                                      norm="batch")
-        self.act_3 = LeakyReLU()
-        self.conv_block_4 = ConvBlock(in_channels=32,
-                                      out_channels=64,
-                                      norm="batch",
-                                      stride=2)
-        self.act_4 = LeakyReLU()
-        self.conv_block_5 = Sequential(ConvBlock(in_channels=64,
-                                                 out_channels=128,
-                                                 norm="batch"),
-                                       ResBlock(in_channels=128,
-                                                out_channels=128,
-                                                norm="batch"))
-        self.act_5 = Tanh()
+        self.model_preparation = nn.ModuleList()
+        self.model_downsample = nn.ModuleList()
+        self.model_postprocess = nn.ModuleList()
 
-    def forward(self, image):
-        hooks = []
+        self.output_dim = dim
 
-        x = self.act_1(self.conv_block_1(image))
-        hooks.append(x)
-        x = self.act_2(self.conv_block_2(x))
-        hooks.append(x)
-        x = self.act_3(self.conv_block_3(x))
-        hooks.append(x)
-        x = self.act_4(self.conv_block_4(x))
-        hooks.append(x)
-        x = self.act_5(self.conv_block_5(x))
-        return x, hooks
+    def forward(self, tensor, spade_input=None):
+        model = chain(self.model_preparation, self.model_downsample, self.model_postprocess)
+        return module_list_forward(model, tensor, spade_input)
+
+
+class ContentEncoderBC(ContentEncoderBase):
+    def __init__(self, num_downsamples, num_blocks, input_dim, dim, norm, activ, pad_type, non_local=False, **kwargs):
+        super().__init__(dim)
+        self.model_preparation += [Conv2dBlock(input_dim, dim, 9, 1, 4, norm=norm, activation=activ, pad_type=pad_type)]
+        # downsampling blocks
+        for i in range(num_downsamples):
+            self.model_downsample += [
+                Conv2dBlock(dim, 2 * dim, 6, 2, 2, norm=norm, activation=activ, pad_type=pad_type)]
+            dim *= 2
+        # residual blocks
+        self.model_postprocess += [
+            ResBlocks(num_blocks, dim, norm=norm, activation=activ, pad_type=pad_type, non_local=non_local)]
+
+
+class ContentEncoderUnet(ContentEncoderBC):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.skip_dim = kwargs['skip_dim']
+        if isinstance(self.skip_dim, int):
+            self.skip_dim = [self.skip_dim] * kwargs['num_downsamples']
+
+    def forward(self, tensor: torch.Tensor):
+        output : List[torch.Tensor] = []
+        for layer in self.model_preparation:
+            tensor = layer(tensor)
+        #tensor = module_list_forward(self.model_preparation, tensor, spade_input)
+
+        for layer in self.model_downsample:
+            skip_dim = 5
+            if skip_dim > 0:
+                out = tensor[:, :skip_dim]
+            else:
+                out = tensor
+            output.append(out)
+            tensor = layer(tensor)
+
+
+        for layer in self.model_postprocess:
+            tensor = layer(tensor)
+        #tensor = module_list_forward(self.model_postprocess, tensor, spade_input)
+        output.append(tensor)
+        output_reversed: List[torch.Tensor] = [output[2], output[1], output[0]]
+        return output_reversed
