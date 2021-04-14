@@ -172,13 +172,12 @@ class Trainer():
                     loss = info["train-gen: loss"]
                 else:
                     loss = info["train-dis: loss"]
-
+                    
+                optimizer.zero_grad()
                 loss.backward()
                 utils.clip_grad_norm_(parameters=self.model.parameters(),
                                       max_norm=10)
-
                 optimizer.step()
-                optimizer.zero_grad()
 
             self.validate()
 
